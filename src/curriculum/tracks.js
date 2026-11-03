@@ -1,0 +1,46 @@
+// GES (Ghana) vs International: the same lesson templates with local words swapped in.
+export const TRACKS = {
+  ges: {
+    id: 'ges',
+    name: 'Ghana (GES)',
+    flag: '🇬🇭',
+    currency: 'GH₵',
+    coin: 'pesewas',
+    names: ['Kofi', 'Ama', 'Kwame', 'Akosua', 'Yaw', 'Esi', 'Kojo', 'Abena', 'Kwesi', 'Adwoa', 'Fiifi', 'Efua'],
+    foods: [
+      { name: 'oranges', emoji: '🍊' },
+      { name: 'mangoes', emoji: '🥭' },
+      { name: 'bananas', emoji: '🍌' },
+      { name: 'pineapples', emoji: '🍍' },
+      { name: 'coconuts', emoji: '🥥' },
+      { name: 'eggs', emoji: '🥚' },
+    ],
+    dish: 'jollof rice',
+    place: 'market',
+    town: 'Kumasi',
+    sport: 'football',
+    animals: ['goat', 'chicken', 'lizard', 'cat', 'sheep'],
+  },
+  intl: {
+    id: 'intl',
+    name: 'International',
+    flag: '🌍',
+    currency: '$',
+    coin: 'cents',
+    names: ['Tom', 'Mia', 'Leo', 'Zoe', 'Sam', 'Ava', 'Ben', 'Lily', 'Max', 'Emma', 'Noah', 'Ella'],
+    foods: [
+      { name: 'apples', emoji: '🍎' },
+      { name: 'oranges', emoji: '🍊' },
+      { name: 'bananas', emoji: '🍌' },
+      { name: 'cookies', emoji: '🍪' },
+      { name: 'strawberries', emoji: '🍓' },
+      { name: 'eggs', emoji: '🥚' },
+    ],
+    dish: 'pasta',
+    place: 'shop',
+    town: 'the city',
+    sport: 'soccer',
+    animals: ['dog', 'cat', 'rabbit', 'hamster', 'goldfish'],
+  },
+};
+export const trackOf = (id) => TRACKS[id] || TRACKS.ges;

@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-50: 245 243 255; --brand-100: 237 233 254; --brand-200: 221 214 254; --brand-300: 196 181 253; --brand-400: 167 139 250; --brand-500: 139 92 246;
+    --brand-600: 124 58 237; --brand-700: 109 40 217; --brand-800: 91 33 182; --brand-900: 76 29 149; --brand-950: 46 16 101;
+    --accent-50: 255 247 237; --accent-100: 255 237 213; --accent-200: 254 215 170; --accent-300: 253 186 116; --accent-400: 251 146 60; --accent-500: 249 115 22;
+    --accent-600: 234 88 12; --accent-700: 194 65 12; --accent-800: 154 52 18; --accent-900: 124 45 18; --accent-950: 67 20 7;
+    --page-bg: linear-gradient(160deg, #fff1f2 0%, #fef9c3 30%, #dcfce7 55%, #e0f2fe 78%, #f3e8ff 100%);
+  }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply text-ink antialiased;
+    font-family: Fredoka, system-ui, sans-serif;
+    background: var(--page-bg);
+    background-attachment: fixed;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+  }
+  button { touch-action: manipulation; }
+  ::selection { @apply bg-brand-200 text-brand-900; }
+}
+
+@layer components {
+  .card { @apply rounded-3xl border-2 border-white/80 bg-white/95 shadow-soft; }
+  .panel { @apply rounded-2xl border border-slate-200/80 bg-white shadow-soft; }
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-2xl px-5 py-2.5 font-semibold transition active:translate-y-0.5 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary { @apply btn bg-brand-600 text-white shadow-chunky-sm hover:bg-brand-700 active:shadow-none; }
+  .btn-accent { @apply btn bg-accent-500 text-white shadow-chunky-sm hover:bg-accent-600 active:shadow-none; }
+  .btn-soft { @apply btn bg-brand-100 text-brand-800 hover:bg-brand-200; }
+  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
+  .btn-white { @apply btn bg-white text-ink shadow-chunky-sm hover:bg-slate-50 active:shadow-none; }
+  .btn-danger { @apply btn bg-rose-50 text-rose-700 hover:bg-rose-100; }
+  .input {
+    @apply w-full rounded-xl border-2 border-slate-200 bg-white px-3.5 py-2.5 text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100;
+  }
+  .label { @apply mb-1.5 block text-sm font-medium text-slate-600; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+  .kid-tile {
+    @apply relative flex select-none flex-col items-center justify-center gap-2 rounded-[1.75rem] p-4 text-center font-semibold text-white shadow-chunky transition active:translate-y-1 active:shadow-none;
+  }
+  .rainbow-text {
+    background: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .rainbow-bar { background: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #3b82f6, #8b5cf6, #ec4899); }
+  .grid-paper {
+    background-color: #fff;
+    background-image: linear-gradient(rgb(var(--brand-100)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--brand-100)) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+/* Dark "Space" background: page-level text that sits directly on the background turns light. */
+.bg-dark .on-bg { color: #fff; }
+.bg-dark .on-bg-muted { color: rgb(226 232 240 / .8); }
+.on-bg-muted { color: rgb(71 85 105); }
+
+.stars-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0;
+  background-image: radial-gradient(2px 2px at 20px 30px, #fff, transparent), radial-gradient(1.5px 1.5px at 120px 80px, #fff, transparent),
+    radial-gradient(2px 2px at 200px 160px, #fde68a, transparent), radial-gradient(1px 1px at 280px 40px, #fff, transparent), radial-gradient(1.5px 1.5px at 340px 220px, #fff, transparent);
+  background-size: 360px 260px;
+}
+.bg-dark .stars-layer { opacity: .8; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+.safe-b { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

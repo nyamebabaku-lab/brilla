@@ -27,7 +27,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      # The runner already has the Android SDK; just make sure the platform this app targets is installed.
+      - name: Android SDK platform 36
+        run: |
+          SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0" > /dev/null
       - run: npm ci
       - run: npm run build:app
       - run: npx cap sync android

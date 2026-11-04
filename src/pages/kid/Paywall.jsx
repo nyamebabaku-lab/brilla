@@ -4,6 +4,7 @@ import { Modal } from '../../components/ui';
 import { Brill } from '../../components/brand';
 import { GrownUpGate } from '../../components/common';
 import { useDB } from '../../data/store';
+import { UNIT_SIZE } from '../../curriculum';
 
 /** Shown when a child taps a locked lesson. Grown-ups pass the gate to reach pricing. */
 export default function Paywall({ open, onClose, child, isStudent }) {
@@ -18,7 +19,7 @@ export default function Paywall({ open, onClose, child, isStudent }) {
           <Brill size={84} mood="wow" className="mx-auto animate-bob" />
           <h2 className="mt-2 text-3xl font-semibold">Unlock Brilla! 🔓</h2>
           <p className="mt-2 text-lg text-slate-600">
-            You’ve tried {freeLessons} free lessons in every subject. {isStudent ? 'Ask your teacher to unlock the rest!' : 'Ask a grown-up to open a new unit of 50 lessons every week!'}
+            You’ve tried {freeLessons} free lessons in every subject. {isStudent ? 'Ask your teacher to unlock the rest!' : `Ask a grown-up to open a new unit of ${UNIT_SIZE} lessons every week!`}
           </p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
             {['🎨 All colouring', '🔢 All maths', '📖 All reading', '✍️ All tracing', '🔬 All science', '🏆 New stickers'].map((t) => (

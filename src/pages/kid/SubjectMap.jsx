@@ -106,7 +106,7 @@ export default function SubjectMap() {
             <span className="text-4xl">🎁</span>
             <span>
               <span className="block text-lg font-semibold">Unit {activeUnit + 1} opens {activeUnit === openUnits && nextUnit ? `on ${new Date(nextUnit).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}` : activeUnit === openUnits ? 'with next week’s payment' : `in week ${activeUnit + 1}`}</span>
-              <span className="text-sm text-slate-500">A new unit of 50 lessons opens every paid week.</span>
+              <span className="text-sm text-slate-500">A new unit of {UNIT_SIZE} lessons opens every paid week.</span>
             </span>
           </button>
         )}

@@ -83,7 +83,7 @@ export const useDB = create(
     }),
     {
       name: 'brilla-db',
-      version: 3,
+      version: 4,
       // v2: add demo records introduced later (e.g. the expired-plan family) without touching the user's own data.
       migrate: (state, version) => {
         const seed = buildSeed();
@@ -99,6 +99,10 @@ export const useDB = create(
             payments: next.payments.map(toFamily),
             settings: { ...(next.settings || {}), plans: DEFAULT_SETTINGS.plans, freeLessons: DEFAULT_SETTINGS.freeLessons, schoolsEnabled: false },
           };
+        }
+        // v4: units are now 30 lessons; refresh the plan's feature list (prices stay as Admin set them).
+        if (version < 4 && next.settings?.plans?.family) {
+          next = { ...next, settings: { ...next.settings, plans: { ...next.settings.plans, family: { ...next.settings.plans.family, features: DEFAULT_SETTINGS.plans.family.features } } } };
         }
         return next;
       },

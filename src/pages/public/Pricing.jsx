@@ -4,10 +4,11 @@ import { PeriodSwitch, PlanCards, PublicHeader } from '../../components/common';
 import { useDB } from '../../data/store';
 import { useTheme, useUser } from '../../lib/hooks';
 import { activeSub } from '../../lib/access';
+import { UNIT_SIZE, UNITS_PER_SUBJECT } from '../../curriculum';
 
 const FAQ = [
   ['What is free?', 'The first 10 lessons in every subject at every class level, so your child can try Brilla before you pay.'],
-  ['How do units work?', 'Each subject has 20 units of 50 lessons. Unit 1 opens when you pay, then one more unit opens every week your plan is running. Units already opened stay open when you renew.'],
+  ['How do units work?', `Each subject has ${UNITS_PER_SUBJECT} units of ${UNIT_SIZE} lessons. Unit 1 opens when you pay, then one more unit opens every week your plan is running. Units already opened stay open when you renew.`],
   ['How do I pay?', 'MTN MoMo, Telecel Cash, AirtelTigo Money, or a Visa/Mastercard card. You approve the payment on your phone.'],
   ['Does it work without internet?', 'Yes. Install Brilla and lessons work offline. Your plan stays active offline until its end date.'],
   ['What happens when my plan ends?', 'Nothing is charged automatically. On the end date the app locks (online or offline) until you pay for the next week, month or year. We remind you 3 days before.'],
@@ -29,7 +30,7 @@ export default function Pricing() {
       <div className="mx-auto max-w-6xl px-4 pb-16">
         <div className="mb-8 text-center">
           <h1 className="on-bg text-4xl font-bold sm:text-5xl">One plan. Up to 5 children.</h1>
-          <p className="on-bg-muted mx-auto mt-3 max-w-xl text-lg">Start with 10 free lessons in every subject. Then a new unit of 50 lessons opens every week.</p>
+          <p className="on-bg-muted mx-auto mt-3 max-w-xl text-lg">Start with 10 free lessons in every subject. Then a new unit of {UNIT_SIZE} lessons opens every week.</p>
           <div className="mt-6">
             <PeriodSwitch value={period} onChange={setPeriod} plans={plans} />
           </div>

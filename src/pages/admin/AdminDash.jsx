@@ -9,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { PERIODS } from '../../data/seed';
 import { LEVELS } from '../../curriculum/levels';
 import { subjectsForLevel } from '../../curriculum/subjects';
-import { countAllLessons, lessonsFor, UNIT_SIZE } from '../../curriculum';
+import { countAllLessons, lessonsFor, UNIT_SIZE, UNITS_PER_SUBJECT } from '../../curriculum';
 import { isActive } from '../../lib/access';
 import { methodLabel, periodOf } from '../../lib/payments';
 import { BACKGROUNDS, BG_NAMES, themeFromPreset } from '../../lib/theme';
@@ -147,7 +147,7 @@ function Plans() {
                 <input className="input" type="number" min={1} max={10} value={p.maxKids} onChange={(e) => setField(p.id, 'maxKids', Number(e.target.value))} />
               </Field>
             )}
-            {!p.perSeat && <p className="rounded-xl bg-brand-50 p-3 text-sm text-brand-800">Monthly covers 4 weeks (opens 4 units over the month) and yearly covers 52 weeks. A new unit of 50 lessons opens every paid week.</p>}
+            {!p.perSeat && <p className="rounded-xl bg-brand-50 p-3 text-sm text-brand-800">Monthly covers 4 weeks (opens 4 units over the month) and yearly covers 52 weeks. A new unit of {UNIT_SIZE} lessons opens every paid week ({UNITS_PER_SUBJECT} units per subject).</p>}
           </div>
         ))}
       </div>

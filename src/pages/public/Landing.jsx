@@ -5,7 +5,7 @@ import { PublicHeader, InstallButton } from '../../components/common';
 import { Brill, SpeechBubble } from '../../components/brand';
 import { SUBJECTS } from '../../curriculum/subjects';
 import { LEVELS } from '../../curriculum/levels';
-import { countAllLessons } from '../../curriculum';
+import { countAllLessons, UNIT_SIZE } from '../../curriculum';
 import { useDB } from '../../data/store';
 import { useTheme } from '../../lib/hooks';
 import { money } from '../../lib/format';
@@ -125,7 +125,7 @@ export default function Landing() {
           <div>
             <h2 className="text-3xl font-semibold">One simple plan for the whole family</h2>
             <p className="mt-2 text-slate-500">
-              Up to {family?.maxKids || 5} children for {money(family?.prices.weekly, settings.currency)} a week. Every paid week opens a new unit of 50 lessons in every subject. Pay weekly, monthly or yearly with MTN MoMo, Telecel Cash, AirtelTigo Money or card.
+              Up to {family?.maxKids || 5} children for {money(family?.prices.weekly, settings.currency)} a week. Every paid week opens a new unit of {UNIT_SIZE} lessons in every subject. Pay weekly, monthly or yearly with MTN MoMo, Telecel Cash, AirtelTigo Money or card.
             </p>
           </div>
           <Link to="/pricing" className="btn-primary px-7 py-3.5 text-lg">

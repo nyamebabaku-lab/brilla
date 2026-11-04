@@ -4,7 +4,7 @@ import { LogOut, Palette, Sticker, Users } from 'lucide-react';
 import KidLayout, { useKid } from './KidLayout';
 import Paywall from './Paywall';
 import { useDB } from '../../data/store';
-import { catalogFor } from '../../curriculum';
+import { catalogFor, UNITS_PER_SUBJECT } from '../../curriculum';
 import { levelName } from '../../curriculum/levels';
 import { useChildAccess } from '../../lib/access';
 import { streak, subjectProgress } from '../../lib/progress';
@@ -123,7 +123,7 @@ export default function KidHome() {
           <span className="text-4xl">🎁</span>
           <span className="flex-1">
             <span className="block text-lg font-semibold">
-              {openUnits} of 20 units open in every subject
+              {Math.min(openUnits, UNITS_PER_SUBJECT)} of {UNITS_PER_SUBJECT} units open in every subject
             </span>
             <span className="text-slate-500">{nextUnit ? `Unit ${openUnits + 1} opens on ${new Date(nextUnit).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}` : 'A new unit opens every week of the plan'}</span>
           </span>

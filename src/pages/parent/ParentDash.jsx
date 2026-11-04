@@ -15,7 +15,7 @@ import { DEFAULT_THEME } from '../../lib/theme';
 import { useUser } from '../../lib/hooks';
 import { activeSub, nextUnitAt, seatsCovered, unitsUnlocked } from '../../lib/access';
 import { methodLabel, periodOf } from '../../lib/payments';
-import { catalogFor, buildLesson } from '../../curriculum';
+import { catalogFor, buildLesson, UNIT_SIZE, UNITS_PER_SUBJECT } from '../../curriculum';
 import { levelName } from '../../curriculum/levels';
 import { subjectById } from '../../curriculum/subjects';
 import { lessonsDone, minutesToday, streak, subjectProgress, totalStars, weekUsage } from '../../lib/progress';
@@ -273,7 +273,7 @@ function BillingTab({ user }) {
               Active until <b>{fmtDate(sub.expiresAt)}</b> ({daysBetween(new Date(), sub.expiresAt)} days left)
             </div>
             <div className="mt-1 font-medium text-brand-700">
-              🎁 Units open: {Math.min(20, units)} of 20{units < 20 && (next ? ` · Unit ${units + 1} opens ${fmtDate(next)}` : ' · renew to keep opening units')}
+              🎁 Units open: {Math.min(UNITS_PER_SUBJECT, units)} of {UNITS_PER_SUBJECT}{units < UNITS_PER_SUBJECT && (next ? ` · Unit ${units + 1} opens ${fmtDate(next)}` : ' · renew to keep opening units')}
             </div>
             <div className="mt-2">
               <Toggle checked={sub.autoRenew} onChange={(v) => (update('subscriptions', sub.id, { autoRenew: v }), toast.info(v ? 'Reminders on' : 'Reminders off', v ? 'We’ll remind you 3 days before it ends. Nothing is charged automatically.' : 'Your plan stays active until the end date'))} label="Remind me 3 days before it ends" />
@@ -286,7 +286,7 @@ function BillingTab({ user }) {
       ) : (
         <div className="panel p-5">
           <div className="text-xl font-semibold">{units ? 'Your plan has ended' : 'You’re on free lessons'}</div>
-          <p className="text-slate-500">{units ? `${Math.min(20, units)} units are waiting for you. Renew to open them again and keep unlocking a new unit every week.` : 'Pay to open Unit 1, then a new unit of 50 lessons opens every week in every subject.'}</p>
+          <p className="text-slate-500">{units ? `${Math.min(UNITS_PER_SUBJECT, units)} units are waiting for you. Renew to open them again and keep unlocking a new unit every week.` : `Pay to open Unit 1, then a new unit of ${UNIT_SIZE} lessons opens every week in every subject.`}</p>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">

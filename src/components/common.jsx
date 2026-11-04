@@ -5,6 +5,7 @@ import { Logo } from './brand';
 import { Modal } from './ui';
 import { useDB } from '../data/store';
 import { PERIODS, visiblePlans } from '../data/seed';
+import { UNIT_SIZE, UNITS_PER_SUBJECT } from '../curriculum';
 import { useOnline, useUser } from '../lib/hooks';
 import { cls, money } from '../lib/format';
 import { yearlySaving } from '../lib/payments';
@@ -84,7 +85,7 @@ export function PlanCards({ period, onPick, current }) {
           </div>
           {!p.perSeat && (
             <p className="-mt-2 mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">
-              🎁 {days / 7 >= 20 ? 'A new unit of 50 lessons every week: all 20 units open by week 20' : `Opens ${days / 7} new unit${days > 7 ? 's' : ''} of 50 lessons, 1 every week`}
+              🎁 {days / 7 >= UNITS_PER_SUBJECT ? `A new unit of ${UNIT_SIZE} lessons every week: all ${UNITS_PER_SUBJECT} units open by week ${UNITS_PER_SUBJECT}` : `Opens ${days / 7} new unit${days > 7 ? 's' : ''} of ${UNIT_SIZE} lessons, 1 every week`}
             </p>
           )}
           <ul className="mb-6 flex-1 space-y-2">

@@ -8,6 +8,7 @@ import { useDB } from '../../data/store';
 import { useTheme, useUser } from '../../lib/hooks';
 import { METHODS, charge, completePurchase, periodOf, quote } from '../../lib/payments';
 import { activeSub } from '../../lib/access';
+import { UNITS_PER_SUBJECT } from '../../curriculum';
 import { cls, fmtDate, money } from '../../lib/format';
 import { sfx } from '../../lib/sfx';
 
@@ -176,7 +177,7 @@ export default function Checkout() {
                 <div className="flex justify-between">
                   <span className="text-slate-500">Covers</span>
                   <b>
-                    {periodOf(period).days / 7} week{periodOf(period).days > 7 ? 's' : ''} · +{Math.min(20, periodOf(period).days / 7)} unit{periodOf(period).days > 7 ? 's' : ''}
+                    {periodOf(period).days / 7} week{periodOf(period).days > 7 ? 's' : ''} · +{Math.min(UNITS_PER_SUBJECT, periodOf(period).days / 7)} unit{periodOf(period).days > 7 ? 's' : ''}
                   </b>
                 </div>
               )}

@@ -2,6 +2,7 @@
 import { Modal } from '../../components/ui';
 import { Brill } from '../../components/brand';
 import { fmtDate } from '../../lib/format';
+import { UNIT_SIZE, UNITS_PER_SUBJECT } from '../../curriculum';
 
 export default function UnitLocked({ unit, open, onClose, openUnits, nextUnit }) {
   const weeksAway = unit - openUnits; // 0 = the very next unit
@@ -19,7 +20,7 @@ export default function UnitLocked({ unit, open, onClose, openUnits, nextUnit })
               : `A new unit opens every week. This one is ${weeksAway + 1} weeks away.`}
         </p>
         <p className="mt-3 rounded-2xl bg-brand-50 p-3 text-sm text-brand-800">
-          {openUnits} of 20 units open · 1 new unit of 50 lessons every week
+          {Math.min(openUnits, UNITS_PER_SUBJECT)} of {UNITS_PER_SUBJECT} units open · 1 new unit of {UNIT_SIZE} lessons every week
         </p>
         <button onClick={onClose} className="btn-accent mt-5 w-full py-3">
           OK!

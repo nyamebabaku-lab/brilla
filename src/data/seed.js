@@ -9,7 +9,7 @@ export const STICKERS = ['🦄', '🌈', '🚀', '🦖', '🍦', '🎸', '🏆',
 
 // One plan for families. The School plan is kept for when Admin switches school accounts on.
 export const DEFAULT_PLANS = {
-  family: { id: 'family', name: 'Brilla Family', tagline: 'Up to 5 children, every subject', emoji: '👨‍👩‍👧‍👦', maxKids: 5, perSeat: false, prices: { weekly: 25, monthly: 100, yearly: 1300 }, features: ['Up to 5 child profiles', 'Each child at their own class level', 'A new unit of 30 lessons every week', 'Parent dashboard and screen time', 'Works offline'], popular: true },
+  family: { id: 'family', name: 'Brilla Family', tagline: 'Up to 5 children, every subject', emoji: '👨‍👩‍👧‍👦', maxKids: 5, perSeat: false, prices: { weekly: 25, monthly: 100, yearly: 1300 }, features: ['Up to 5 child profiles', 'Each child at their own class level', 'A new unit of 50 lessons every week', 'Parent dashboard and screen time', 'Works offline'], popular: true },
   school: { id: 'school', name: 'School', tagline: 'Per pupil, for teachers', emoji: '🏫', maxKids: 2000, perSeat: true, schoolOnly: true, prices: { weekly: 5, monthly: 20, yearly: 260 }, features: ['Classes with join codes', 'Assign lessons and due dates', 'Class progress reports', 'Picture-password logins for pupils'] },
 };
 /** Plans families can buy right now. */

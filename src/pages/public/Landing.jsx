@@ -26,7 +26,7 @@ export default function Landing() {
   useTheme();
   const settings = useDB((s) => s.settings);
   const total = useMemo(() => countAllLessons(settings), [settings]);
-  const cheapest = Math.min(...Object.values(settings.plans).filter((p) => !p.perSeat).map((p) => p.prices.weekly));
+  const family = settings.plans.family;
 
   return (
     <div>
@@ -48,7 +48,7 @@ export default function Landing() {
             </Link>
           </div>
           <p className="on-bg-muted mt-4 text-sm">
-            {settings.freeLessons} free lessons in every subject. Plans from {money(cheapest, settings.currency)}/week. Pay with MoMo or card.
+            {settings.freeLessons} free lessons in every subject. One plan for up to {family?.maxKids || 5} children: {money(family?.prices.weekly, settings.currency)}/week. Pay with MoMo or card.
           </p>
         </div>
         <div className="relative mx-auto aspect-square w-full max-w-md">
@@ -123,8 +123,10 @@ export default function Landing() {
       <section className="mx-auto max-w-6xl px-4 py-10">
         <div className="card grid items-center gap-6 p-8 md:grid-cols-[1fr_auto]">
           <div>
-            <h2 className="text-3xl font-semibold">One child, a whole family, or a whole school</h2>
-            <p className="mt-2 text-slate-500">Choose Single, Family or School. Pay weekly, monthly or yearly with MTN MoMo, Telecel Cash, AirtelTigo Money or card.</p>
+            <h2 className="text-3xl font-semibold">One simple plan for the whole family</h2>
+            <p className="mt-2 text-slate-500">
+              Up to {family?.maxKids || 5} children for {money(family?.prices.weekly, settings.currency)} a week. Every paid week opens a new unit of 50 lessons in every subject. Pay weekly, monthly or yearly with MTN MoMo, Telecel Cash, AirtelTigo Money or card.
+            </p>
           </div>
           <Link to="/pricing" className="btn-primary px-7 py-3.5 text-lg">
             See prices

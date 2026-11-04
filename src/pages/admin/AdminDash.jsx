@@ -120,8 +120,15 @@ function Plans() {
   };
   return (
     <div className="space-y-5">
-      <div className="grid gap-4 lg:grid-cols-3">
-        {Object.values(plans).map((p) => (
+      <div className="panel flex flex-wrap items-center gap-4 p-5">
+        <div className="flex-1">
+          <div className="font-semibold">School accounts</div>
+          <p className="text-sm text-slate-500">When on, teachers can sign up, create classes and set homework, pupils log in with class codes, and the School plan is shown for sale.</p>
+        </div>
+        <Toggle checked={!!settings.schoolsEnabled} onChange={(v) => (updateSettings({ schoolsEnabled: v }), toast.success(v ? 'School accounts turned on' : 'School accounts turned off'))} label={settings.schoolsEnabled ? 'On' : 'Off'} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Object.values(plans).filter((p) => !p.schoolOnly || settings.schoolsEnabled).map((p) => (
           <div key={p.id} className="panel space-y-3 p-5">
             <div className="flex items-center gap-2 text-2xl">
               {p.emoji}
@@ -140,13 +147,13 @@ function Plans() {
                 <input className="input" type="number" min={1} max={10} value={p.maxKids} onChange={(e) => setField(p.id, 'maxKids', Number(e.target.value))} />
               </Field>
             )}
-            <Toggle checked={!!p.popular} onChange={(v) => setField(p.id, 'popular', v)} label="Highlight as most popular" />
+            {!p.perSeat && <p className="rounded-xl bg-brand-50 p-3 text-sm text-brand-800">Monthly covers 4 weeks (opens 4 units over the month) and yearly covers 52 weeks. A new unit of 50 lessons opens every paid week.</p>}
           </div>
         ))}
       </div>
       <div className="panel flex flex-wrap items-end gap-4 p-5">
-        <Field label="Free lessons per subject (every level)" className="w-64">
-          <input className="input" type="number" min={0} max={20} value={free} onChange={(e) => setFree(e.target.value)} />
+        <Field label="Free taster lessons per subject (before paying)" className="w-72">
+          <input className="input" type="number" min={0} max={50} value={free} onChange={(e) => setFree(e.target.value)} />
         </Field>
         <button onClick={save} className="btn-primary">
           Save all changes
@@ -348,8 +355,8 @@ function Subscribers() {
     .filter((r) => `${r.u.name} ${r.u.email} ${r.u.phone}`.toLowerCase().includes(q.toLowerCase()));
 
   const gift = (u) => {
-    add('subscriptions', { userId: u.id, plan: u.plan || 'family', period: 'monthly', seats: 30, amount: 0, status: 'active', autoRenew: false, startedAt: nowISO(), expiresAt: addDays(nowISO(), 30), gifted: true });
-    toast.success(`Gave ${u.name} 30 free days`);
+    add('subscriptions', { userId: u.id, plan: u.role === 'teacher' ? 'school' : 'family', period: 'monthly', seats: 30, amount: 0, status: 'active', autoRenew: false, startedAt: nowISO(), expiresAt: addDays(nowISO(), 28), gifted: true });
+    toast.success(`Gave ${u.name} 4 free weeks`);
   };
 
   return (
@@ -393,7 +400,7 @@ function Subscribers() {
                 </td>
                 <td className="p-3 text-right">
                   <button onClick={() => gift(u)} className="btn-ghost px-2 py-1 text-xs">
-                    +30 days
+                    +4 weeks
                   </button>
                   {active && (
                     <button onClick={() => (update('subscriptions', sub.id, { status: 'cancelled' }), toast.info('Subscription cancelled'))} className="btn-ghost px-2 py-1 text-xs text-rose-600">

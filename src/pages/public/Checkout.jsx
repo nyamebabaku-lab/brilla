@@ -30,7 +30,7 @@ export default function Checkout() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  if (!plan) return <div className="p-10 text-center">Plan not found.</div>;
+  if (!plan || (plan.schoolOnly && !settings.schoolsEnabled)) return <div className="p-10 text-center">This plan isn’t available.</div>;
   const isCard = method === 'card';
   const amount = quote(plan, period, seats);
   const current = activeSub(user.id);
@@ -172,6 +172,14 @@ export default function Checkout() {
                 <span className="text-slate-500">Billing</span>
                 <b>{periodOf(period).label}</b>
               </div>
+              {!plan.perSeat && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Covers</span>
+                  <b>
+                    {periodOf(period).days / 7} week{periodOf(period).days > 7 ? 's' : ''} · +{Math.min(20, periodOf(period).days / 7)} unit{periodOf(period).days > 7 ? 's' : ''}
+                  </b>
+                </div>
+              )}
               {plan.perSeat && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">Pupils</span>

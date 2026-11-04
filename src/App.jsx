@@ -32,10 +32,29 @@ function Loading() {
 function RequireRole({ roles, children }) {
   const session = useDB((s) => s.session);
   const user = useDB((s) => s.users.find((u) => u.id === s.session.userId));
+  const schoolsOn = useDB((s) => !!s.settings.schoolsEnabled);
+  // School accounts can be switched off by Admin: pupils and teachers then see a short notice.
+  if (!schoolsOn && (session.studentId || user?.role === 'teacher')) return <SchoolsPaused />;
   if (session.studentId && roles.includes('student')) return children;
   if (!user) return <Navigate to="/login" replace />;
   if (!roles.includes(user.role)) return <Navigate to="/home" replace />;
   return children;
+}
+
+function SchoolsPaused() {
+  const logout = useDB((s) => s.logout);
+  return (
+    <div className="grid min-h-[100dvh] place-items-center p-4">
+      <div className="card max-w-md p-8 text-center">
+        <Brill size={80} mood="think" className="mx-auto" />
+        <h1 className="mt-3 text-2xl font-semibold">School accounts are paused</h1>
+        <p className="mt-2 text-slate-600">Brilla is for families right now. Please ask a parent to create a family account.</p>
+        <button onClick={() => (logout(), (location.hash = '#/'))} className="btn-primary mt-5">
+          OK
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {

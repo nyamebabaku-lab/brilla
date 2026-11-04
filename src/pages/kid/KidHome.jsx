@@ -34,7 +34,7 @@ export default function KidHome() {
   const usage = useDB((s) => s.usage[childId]);
   const assignments = useDB((s) => s.assignments);
   const logout = useDB((s) => s.logout);
-  const { unlocked } = useChildAccess(child);
+  const { canOpen, paid, units: openUnits, nextUnit } = useChildAccess(child);
   const [paywall, setPaywall] = useState(false);
   const [gate, setGate] = useState(false);
 
@@ -46,7 +46,7 @@ export default function KidHome() {
   // Suggest the first unfinished lesson the child can open.
   let next = null;
   for (const g of catalog) {
-    const l = g.lessons.find((x) => !prog?.[x.id] && (x.free || unlocked));
+    const l = g.lessons.find((x) => !prog?.[x.id] && canOpen(x));
     if (l) {
       next = { ...l, subject: g.subject };
       break;
@@ -118,7 +118,18 @@ export default function KidHome() {
         ))}
       </section>
 
-      {!unlocked && (
+      {paid && (
+        <div className="card mt-6 flex items-center gap-3 p-4">
+          <span className="text-4xl">🎁</span>
+          <span className="flex-1">
+            <span className="block text-lg font-semibold">
+              {openUnits} of 20 units open in every subject
+            </span>
+            <span className="text-slate-500">{nextUnit ? `Unit ${openUnits + 1} opens on ${new Date(nextUnit).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}` : 'A new unit opens every week of the plan'}</span>
+          </span>
+        </div>
+      )}
+      {!paid && (
         <button onClick={() => setPaywall(true)} className="card mt-6 flex w-full items-center gap-3 p-4 text-left">
           <span className="text-4xl">🔓</span>
           <span className="flex-1">

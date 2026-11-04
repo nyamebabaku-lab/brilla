@@ -4,13 +4,14 @@ import { Check, Download, WifiOff } from 'lucide-react';
 import { Logo } from './brand';
 import { Modal } from './ui';
 import { useDB } from '../data/store';
-import { PERIODS } from '../data/seed';
+import { PERIODS, visiblePlans } from '../data/seed';
 import { useOnline, useUser } from '../lib/hooks';
 import { cls, money } from '../lib/format';
 import { yearlySaving } from '../lib/payments';
 
 export function PublicHeader() {
   const user = useUser();
+  const schoolsOn = useDB((s) => !!s.settings.schoolsEnabled);
   return (
     <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
       <Link to="/" aria-label="Brilla home">
@@ -20,9 +21,11 @@ export function PublicHeader() {
         <Link to="/pricing" className="btn-ghost hidden px-3 sm:inline-flex">
           Pricing
         </Link>
-        <Link to="/class" className="btn-ghost hidden px-3 sm:inline-flex">
-          Pupil login
-        </Link>
+        {schoolsOn && (
+          <Link to="/class" className="btn-ghost hidden px-3 sm:inline-flex">
+            Pupil login
+          </Link>
+        )}
         {user ? (
           <Link to="/home" className="btn-primary">
             Open app
@@ -43,7 +46,8 @@ export function PublicHeader() {
 }
 
 export function PeriodSwitch({ value, onChange, plans }) {
-  const save = plans ? Math.max(...Object.values(plans).map(yearlySaving)) : 0;
+  const settings = useDB((s) => s.settings);
+  const save = plans ? Math.max(0, ...visiblePlans({ ...settings, plans }).map(yearlySaving)) : 0;
   return (
     <div className="inline-flex rounded-2xl bg-white p-1 shadow-soft">
       {PERIODS.map((p) => (
@@ -59,11 +63,14 @@ export function PeriodSwitch({ value, onChange, plans }) {
 export function PlanCards({ period, onPick, current }) {
   const settings = useDB((s) => s.settings);
   const per = PERIODS.find((p) => p.id === period)?.per;
+  const days = PERIODS.find((p) => p.id === period)?.days || 7;
+  const plans = visiblePlans(settings);
+  const one = plans.length === 1;
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {Object.values(settings.plans).map((p) => (
-        <div key={p.id} className={cls('card relative flex flex-col p-6', p.popular && 'ring-4 ring-accent-300')}>
-          {p.popular && <span className="chip absolute -top-3 left-6 bg-accent-500 text-white">Most popular</span>}
+    <div className={one ? 'mx-auto grid max-w-md' : 'grid gap-4 md:grid-cols-2'}>
+      {plans.map((p) => (
+        <div key={p.id} className={cls('card relative flex flex-col p-6', (p.popular || one) && 'ring-4 ring-accent-300')}>
+          {p.popular && !one && <span className="chip absolute -top-3 left-6 bg-accent-500 text-white">Most popular</span>}
           <div className="text-4xl">{p.emoji}</div>
           <h3 className="mt-2 text-2xl font-semibold">{p.name}</h3>
           <p className="text-slate-500">{p.tagline}</p>
@@ -75,6 +82,11 @@ export function PlanCards({ period, onPick, current }) {
               {per}
             </span>
           </div>
+          {!p.perSeat && (
+            <p className="-mt-2 mb-4 rounded-xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800">
+              🎁 {days / 7 >= 20 ? 'A new unit of 50 lessons every week: all 20 units open by week 20' : `Opens ${days / 7} new unit${days > 7 ? 's' : ''} of 50 lessons, 1 every week`}
+            </p>
+          )}
           <ul className="mb-6 flex-1 space-y-2">
             {p.features.map((f) => (
               <li key={f} className="flex items-start gap-2 text-slate-600">
@@ -83,7 +95,7 @@ export function PlanCards({ period, onPick, current }) {
             ))}
           </ul>
           <button onClick={() => onPick(p.id)} className={p.popular ? 'btn-accent w-full py-3' : 'btn-primary w-full py-3'}>
-            {current === p.id ? 'Renew / extend' : `Choose ${p.name}`}
+            {current === p.id ? 'Renew / extend' : one ? 'Start learning' : `Choose ${p.name}`}
           </button>
         </div>
       ))}

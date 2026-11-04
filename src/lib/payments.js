@@ -18,8 +18,8 @@ export function quote(plan, period, seats = 1) {
   return Math.round(price * (plan.perSeat ? Math.max(1, seats) : 1) * 100) / 100;
 }
 
-/** Yearly saving vs paying monthly for 12 months, as a whole percentage. */
-export const yearlySaving = (plan) => Math.max(0, Math.round((1 - plan.prices.yearly / (plan.prices.monthly * 12)) * 100));
+/** Yearly saving vs paying weekly for 52 weeks, as a whole percentage. */
+export const yearlySaving = (plan) => Math.max(0, Math.round((1 - plan.prices.yearly / (plan.prices.weekly * 52)) * 100));
 
 /**
  * Pretends to send a payment prompt and waits for approval.

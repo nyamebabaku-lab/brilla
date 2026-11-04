@@ -15,7 +15,7 @@ import { colourTopics, creativeRound, drawTopics, scribbleTopics, traceTopics, w
 const MIN_LESSONS = 12;
 /** Lessons per subject per class. The first ones teach each topic; later rounds practise, review and stretch. */
 export const LESSONS_PER_SUBJECT = 1000;
-export const UNIT_SIZE = 20;
+export const UNIT_SIZE = 50;
 const CREATIVE = ['trace', 'colour', 'draw', 'scribble'];
 const QUIZ_SUBJECTS = ['maths', 'english', 'science', 'phonics', 'writing'];
 

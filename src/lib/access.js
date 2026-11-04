@@ -3,6 +3,7 @@
 // latest time Brilla has seen, so turning the clock back can't stretch a plan.
 import { useEffect, useState } from 'react';
 import { useDB } from '../data/store';
+import { UNIT_SIZE } from '../curriculum';
 
 const LAST_SEEN = 'brilla-last-seen';
 const SLACK = 10 * 60 * 1000; // small clock corrections are fine
@@ -59,7 +60,63 @@ export function childUnlocked(child, state = useDB.getState()) {
   return siblings.findIndex((c) => c.id === child.id) < seats;
 }
 
-export const canOpenLesson = (child, lesson, state) => (lesson.free && !planExpired(child.ownerId, state.subscriptions)) || childUnlocked(child, state);
+// ---- Weekly units: one unit of lessons opens for every week a family has paid for ----
+export const WEEK = 7 * 86400000;
+const PAID = (s) => s.status !== 'failed' && s.status !== 'refunded';
+
+/** Paid time so far in ms: all paid periods merged (overlaps counted once), up to now. */
+export function paidTime(userId, subs = useDB.getState().subscriptions, now = trustedNow()) {
+  const spans = subs
+    .filter((s) => s.userId === userId && PAID(s))
+    .map((s) => [new Date(s.startedAt).getTime(), Math.min(new Date(s.expiresAt).getTime(), now)])
+    .filter(([a, b]) => b > a)
+    .sort((a, b) => a[0] - b[0]);
+  let total = 0;
+  let cur = null;
+  for (const [a, b] of spans) {
+    if (cur && a <= cur[1]) cur[1] = Math.max(cur[1], b);
+    else {
+      if (cur) total += cur[1] - cur[0];
+      cur = [a, b];
+    }
+  }
+  if (cur) total += cur[1] - cur[0];
+  return total;
+}
+
+/** Paid weeks started so far: Week 1 opens the moment the first payment goes through, Week 2 a week later… */
+export const paidWeeks = (userId, subs, now) => {
+  const t = paidTime(userId, subs, now);
+  return t > 0 ? Math.floor((t - 1) / WEEK) + 1 : 0;
+};
+export const unitsUnlocked = (userId, subs = useDB.getState().subscriptions) => paidWeeks(userId, subs);
+
+/** When the next unit opens, or null if the plan ends before then. */
+export function nextUnitAt(userId, subs = useDB.getState().subscriptions) {
+  const sub = activeSub(userId, subs);
+  if (!sub) return null;
+  const now = trustedNow();
+  const t = paidTime(userId, subs, now);
+  const at = now + (WEEK - (t % WEEK));
+  return at < new Date(sub.expiresAt).getTime() ? new Date(at).toISOString() : null;
+}
+
+export const unitOf = (lesson, unitSize) => Math.floor(lesson.order / unitSize);
+
+/**
+ * Can this child open this lesson right now?
+ * Never paid: the free taster lessons. Plan ended: nothing. Plan active: open units (and custom lessons),
+ * for the first `maxKids` profiles.
+ */
+export function canOpenLesson(child, lesson, state, unitSize) {
+  if (!child || !lesson) return false;
+  const subs = state.subscriptions;
+  if (planExpired(child.ownerId, subs)) return false;
+  if (!latestSub(child.ownerId, subs)) return !!lesson.free;
+  if (!childUnlocked(child, state)) return !!lesson.free;
+  if (lesson.custom) return true;
+  return unitOf(lesson, unitSize) < unitsUnlocked(child.ownerId, subs);
+}
 
 /** Re-renders every `ms` so time-based checks (like a plan ending) update on screen. */
 export function useTick(ms = 30000) {
@@ -70,15 +127,23 @@ export function useTick(ms = 30000) {
   }, [ms]);
 }
 
-/** Reactive: { sub, unlocked, expired } for a child. */
+/** Reactive access info for a child: plan, units open, and `canOpen(lesson)`. */
 export function useChildAccess(child) {
   useTick();
   const subs = useDB((s) => s.subscriptions);
   const children = useDB((s) => s.children);
   const settings = useDB((s) => s.settings);
-  if (!child) return { sub: null, unlocked: false, expired: false };
+  if (!child) return { sub: null, unlocked: false, expired: false, paid: false, units: 0, nextUnit: null, canOpen: () => false };
   const state = { subscriptions: subs, children, settings };
-  return { sub: activeSub(child.ownerId, subs), unlocked: childUnlocked(child, state), expired: planExpired(child.ownerId, subs) };
+  return {
+    sub: activeSub(child.ownerId, subs),
+    unlocked: childUnlocked(child, state),
+    expired: planExpired(child.ownerId, subs),
+    paid: !!latestSub(child.ownerId, subs),
+    units: unitsUnlocked(child.ownerId, subs),
+    nextUnit: nextUnitAt(child.ownerId, subs),
+    canOpen: (lesson) => canOpenLesson(child, lesson, state, UNIT_SIZE),
+  };
 }
 
 /** Days left on a plan (0 when ending today). */

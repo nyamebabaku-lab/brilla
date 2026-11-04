@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { PublicHeader } from '../../components/common';
 import { Brill } from '../../components/brand';
 import { Field, toast } from '../../components/ui';
@@ -9,10 +9,10 @@ import { useTheme } from '../../lib/hooks';
 import { cls } from '../../lib/format';
 
 const DEMOS = [
-  { email: 'parent@brilla.app', label: 'Family parent', emoji: '👨‍👩‍👧', note: '3 kids · Family plan active' },
-  { email: 'single@brilla.app', label: 'New parent', emoji: '🧒', note: '1 child · free lessons only' },
+  { email: 'parent@brilla.app', label: 'Family parent', emoji: '👨‍👩‍👧', note: '3 kids · 6 weeks paid, 6 units open' },
+  { email: 'single@brilla.app', label: 'New parent', emoji: '🧒', note: '1 child · 10 free lessons only' },
   { email: 'expired@brilla.app', label: 'Plan ended', emoji: '⏰', note: 'Family plan ended yesterday · app locked' },
-  { email: 'teacher@brilla.app', label: 'Teacher', emoji: '🧑‍🏫', note: 'School plan · 2 classes' },
+  { email: 'teacher@brilla.app', label: 'Teacher', emoji: '🧑‍🏫', note: 'School plan · 2 classes', school: true },
   { email: 'admin@brilla.app', label: 'Admin', emoji: '🛠️', note: 'Prices, lessons, revenue' },
 ];
 
@@ -28,6 +28,7 @@ export function Login() {
   const [params] = useSearchParams();
   const users = useDB((s) => s.users);
   const login = useDB((s) => s.login);
+  const schoolsOn = useDB((s) => !!s.settings.schoolsEnabled);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -68,17 +69,22 @@ export function Login() {
             <Link to="/signup" className="font-semibold text-brand-700">
               Create an account
             </Link>{' '}
-            ·{' '}
-            <Link to="/class" className="font-semibold text-brand-700">
-              Pupil login
-            </Link>
+            {schoolsOn && (
+              <>
+                {' '}
+                ·{' '}
+                <Link to="/class" className="font-semibold text-brand-700">
+                  Pupil login
+                </Link>
+              </>
+            )}
           </p>
         </form>
         <div className="card p-6 sm:p-8">
           <h2 className="text-xl font-semibold">Try a demo account</h2>
           <p className="mb-4 text-sm text-slate-500">One tap, no password needed (all demo passwords are demo123, parent PIN 1234).</p>
           <div className="grid gap-3">
-            {DEMOS.map((d) => {
+            {DEMOS.filter((d) => schoolsOn || !d.school).map((d) => {
               const u = users.find((x) => x.email === d.email);
               return (
                 u && (
@@ -92,13 +98,15 @@ export function Login() {
                 )
               );
             })}
-            <Link to="/class?code=GOLD42" className="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-3 transition hover:border-brand-300 hover:bg-brand-50">
-              <span className="text-3xl">🎒</span>
-              <span>
-                <span className="block font-semibold">Pupil (class code GOLD42)</span>
-                <span className="block text-sm text-slate-500">Pick a name and secret picture</span>
-              </span>
-            </Link>
+            {schoolsOn && (
+              <Link to="/class?code=GOLD42" className="flex items-center gap-3 rounded-2xl border-2 border-slate-100 bg-white p-3 transition hover:border-brand-300 hover:bg-brand-50">
+                <span className="text-3xl">🎒</span>
+                <span>
+                  <span className="block font-semibold">Pupil (class code GOLD42)</span>
+                  <span className="block text-sm text-slate-500">Pick a name and secret picture</span>
+                </span>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -107,7 +115,6 @@ export function Login() {
 }
 
 const ACCOUNT_TYPES = [
-  { id: 'single', role: 'parent', emoji: '🧒', title: 'Just my child', body: 'One child profile' },
   { id: 'family', role: 'parent', emoji: '👨‍👩‍👧‍👦', title: 'My family', body: 'Up to 5 children' },
   { id: 'school', role: 'teacher', emoji: '🏫', title: 'My school or class', body: 'Teachers and schools' },
 ];
@@ -119,7 +126,9 @@ export function Signup() {
   const users = useDB((s) => s.users);
   const add = useDB((s) => s.add);
   const login = useDB((s) => s.login);
-  const [type, setType] = useState(params.get('plan') || 'family');
+  const schoolsOn = useDB((s) => !!s.settings.schoolsEnabled);
+  const types = ACCOUNT_TYPES.filter((t) => schoolsOn || t.id !== 'school');
+  const [type, setType] = useState(types.some((t) => t.id === params.get('plan')) ? params.get('plan') : 'family');
   const [f, setF] = useState({ name: '', email: '', phone: '', password: '', schoolName: '', pin: '' });
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
 
@@ -144,13 +153,14 @@ export function Signup() {
           <Brill size={56} mood="wow" />
           <div>
             <h1 className="text-3xl font-semibold">Create your account</h1>
-            <p className="text-slate-500">Free lessons straight away. Upgrade when you’re ready.</p>
+            <p className="text-slate-500">10 free lessons in every subject straight away. Up to 5 children on one plan.</p>
           </div>
         </div>
+        {types.length > 1 && (
         <div>
           <span className="label">Who is Brilla for?</span>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {ACCOUNT_TYPES.map((t) => (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {types.map((t) => (
               <button type="button" key={t.id} onClick={() => setType(t.id)} className={cls('rounded-2xl border-4 p-4 text-left transition', type === t.id ? 'border-brand-500 bg-brand-50' : 'border-slate-100 bg-white')}>
                 <span className="text-3xl">{t.emoji}</span>
                 <span className="mt-1 block font-semibold">{t.title}</span>
@@ -159,6 +169,7 @@ export function Signup() {
             ))}
           </div>
         </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Your name">
             <input className="input" value={f.name} onChange={set('name')} required />
@@ -203,6 +214,7 @@ export function ClassLogin() {
   const [code, setCode] = useState(params.get('code') || '');
   const [pupil, setPupil] = useState(null);
   const [shake, setShake] = useState(false);
+  const schoolsOn = useDB((s) => !!s.settings.schoolsEnabled);
   const cls_ = classes.find((c) => c.code === code.trim().toUpperCase());
   const pupils = cls_ ? children.filter((c) => c.classId === cls_.id) : [];
 
@@ -215,6 +227,8 @@ export function ClassLogin() {
       setTimeout(() => setShake(false), 450);
     }
   };
+
+  if (!schoolsOn) return <Navigate to="/login" replace />;
 
   return (
     <div>

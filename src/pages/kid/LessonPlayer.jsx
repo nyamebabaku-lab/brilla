@@ -3,9 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import KidLayout, { useKid } from './KidLayout';
 import Paywall from './Paywall';
+import UnitLocked from './UnitLocked';
 import { useDB } from '../../data/store';
 import { STICKERS } from '../../data/seed';
-import { buildLesson, lessonsFor } from '../../curriculum';
+import { buildLesson, lessonsFor, UNIT_SIZE } from '../../curriculum';
 import { subjectById } from '../../curriculum/subjects';
 import { ACTIVITIES } from '../../activities';
 import { useChildAccess } from '../../lib/access';
@@ -30,7 +31,7 @@ function Player({ childId, lessonId }) {
   const recordLesson = useDB((s) => s.recordLesson);
   const addSticker = useDB((s) => s.addSticker);
   const saveDrawing = useDB((s) => s.saveDrawing);
-  const { unlocked } = useChildAccess(child);
+  const { canOpen } = useChildAccess(child);
   const [attempt, setAttempt] = useState(0);
   const [i, setI] = useState(0);
   const [cheer, setCheer] = useState(null);
@@ -90,7 +91,7 @@ function Player({ childId, lessonId }) {
         </div>
       </KidLayout>
     );
-  if (!meta.free && !unlocked) return <LockedLesson child={child} isStudent={isStudent} back={`/kid/${child.id}/s/${meta.subjectId}`} />;
+  if (!canOpen(meta)) return <LockedLesson child={child} isStudent={isStudent} back={`/kid/${child.id}/s/${meta.subjectId}`} lesson={meta} />;
 
   const subject = subjectById(lesson.meta.subjectId);
   const step = lesson.steps[Math.min(i, lesson.steps.length - 1)];
@@ -175,11 +176,13 @@ function Player({ childId, lessonId }) {
   );
 }
 
-function LockedLesson({ child, isStudent, back }) {
+function LockedLesson({ child, isStudent, back, lesson }) {
   const nav = useNavigate();
+  const { paid, units, nextUnit } = useChildAccess(child);
+  const unit = Math.floor(lesson.order / UNIT_SIZE);
   return (
     <KidLayout child={child} back={back}>
-      <Paywall open onClose={() => nav(back)} child={child} isStudent={isStudent} />
+      {paid && unit >= units ? <UnitLocked open unit={unit} openUnits={units} nextUnit={nextUnit} onClose={() => nav(back)} /> : <Paywall open onClose={() => nav(back)} child={child} isStudent={isStudent} />}
     </KidLayout>
   );
 }

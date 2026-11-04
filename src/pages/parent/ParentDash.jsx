@@ -13,7 +13,7 @@ import { useDB } from '../../data/store';
 import { useShallow } from 'zustand/react/shallow';
 import { DEFAULT_THEME } from '../../lib/theme';
 import { useUser } from '../../lib/hooks';
-import { activeSub, seatsCovered } from '../../lib/access';
+import { activeSub, nextUnitAt, seatsCovered, unitsUnlocked } from '../../lib/access';
 import { methodLabel, periodOf } from '../../lib/payments';
 import { catalogFor, buildLesson } from '../../curriculum';
 import { levelName } from '../../curriculum/levels';
@@ -167,7 +167,7 @@ function ChildrenTab({ user, autoAdd }) {
   const [del, setDel] = useState(null);
   const sub = activeSub(user.id);
   const seats = seatsCovered(user.id);
-  const max = plans.family.maxKids;
+  const max = plans.family?.maxKids || 5;
 
   const save = (data) => {
     if (form === 'new') {
@@ -185,13 +185,12 @@ function ChildrenTab({ user, autoAdd }) {
     <div className="space-y-4">
       {sub && kids.length > seats && (
         <div className="rounded-2xl bg-amber-50 p-4 text-amber-900">
-          Your <b>{plans[sub.plan].name}</b> plan covers {seats} {seats === 1 ? 'child' : 'children'}. Others can use free lessons, or{' '}
-          <Link to="/checkout/family" className="font-semibold underline">
-            switch to Family
-          </Link>
-          .
+          Your plan covers {seats} {seats === 1 ? 'child' : 'children'}. Extra profiles can only use the free lessons.
         </div>
       )}
+      <p className="on-bg-muted text-sm">
+        {kids.length} of {max} child profiles used.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {kids.map((k, i) => (
           <div key={k.id} className="panel p-5">
@@ -219,9 +218,9 @@ function ChildrenTab({ user, autoAdd }) {
             </div>
           </div>
         ))}
-        <button onClick={() => setForm('new')} className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-2xl border-4 border-dashed border-brand-200 bg-white/50 font-semibold text-brand-700 hover:bg-white">
+        {kids.length < max && <button onClick={() => setForm('new')} className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-2xl border-4 border-dashed border-brand-200 bg-white/50 font-semibold text-brand-700 hover:bg-white">
           <Plus size={32} /> Add a child
-        </button>
+        </button>}
       </div>
       {form && <ChildForm open onClose={() => setForm(null)} onSave={save} initial={form === 'new' ? null : form} />}
       <Modal
@@ -260,6 +259,8 @@ function BillingTab({ user }) {
   const update = useDB((s) => s.update);
   const [period, setPeriod] = useState('monthly');
   const sub = activeSub(user.id, subs);
+  const units = unitsUnlocked(user.id, subs);
+  const next = nextUnitAt(user.id, subs);
 
   return (
     <div className="space-y-5">
@@ -271,6 +272,9 @@ function BillingTab({ user }) {
             <div className="text-slate-500">
               Active until <b>{fmtDate(sub.expiresAt)}</b> ({daysBetween(new Date(), sub.expiresAt)} days left)
             </div>
+            <div className="mt-1 font-medium text-brand-700">
+              🎁 Units open: {Math.min(20, units)} of 20{units < 20 && (next ? ` · Unit ${units + 1} opens ${fmtDate(next)}` : ' · renew to keep opening units')}
+            </div>
             <div className="mt-2">
               <Toggle checked={sub.autoRenew} onChange={(v) => (update('subscriptions', sub.id, { autoRenew: v }), toast.info(v ? 'Reminders on' : 'Reminders off', v ? 'We’ll remind you 3 days before it ends. Nothing is charged automatically.' : 'Your plan stays active until the end date'))} label="Remind me 3 days before it ends" />
             </div>
@@ -281,12 +285,12 @@ function BillingTab({ user }) {
         </div>
       ) : (
         <div className="panel p-5">
-          <div className="text-xl font-semibold">You’re on free lessons</div>
-          <p className="text-slate-500">Pick a plan to unlock every lesson in every subject.</p>
+          <div className="text-xl font-semibold">{units ? 'Your plan has ended' : 'You’re on free lessons'}</div>
+          <p className="text-slate-500">{units ? `${Math.min(20, units)} units are waiting for you. Renew to open them again and keep unlocking a new unit every week.` : 'Pay to open Unit 1, then a new unit of 50 lessons opens every week in every subject.'}</p>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="on-bg text-xl font-semibold">{sub ? 'Change plan' : 'Choose a plan'}</h3>
+        <h3 className="on-bg text-xl font-semibold">{sub ? 'Pay ahead' : 'Choose how to pay'}</h3>
         <PeriodSwitch value={period} onChange={setPeriod} plans={settings.plans} />
       </div>
       <PlanCards period={period} onPick={(id) => nav(`/checkout/${id}?period=${period}`)} current={sub?.plan} />

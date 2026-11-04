@@ -18,7 +18,7 @@ export default function Paywall({ open, onClose, child, isStudent }) {
           <Brill size={84} mood="wow" className="mx-auto animate-bob" />
           <h2 className="mt-2 text-3xl font-semibold">Unlock Brilla! 🔓</h2>
           <p className="mt-2 text-lg text-slate-600">
-            You’ve got {freeLessons} free lessons in every subject. {isStudent ? 'Ask your teacher to unlock the rest!' : 'Ask a grown-up to unlock hundreds more!'}
+            You’ve tried {freeLessons} free lessons in every subject. {isStudent ? 'Ask your teacher to unlock the rest!' : 'Ask a grown-up to open a new unit of 50 lessons every week!'}
           </p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
             {['🎨 All colouring', '🔢 All maths', '📖 All reading', '✍️ All tracing', '🔬 All science', '🏆 New stickers'].map((t) => (
@@ -44,7 +44,7 @@ export default function Paywall({ open, onClose, child, isStudent }) {
         onPass={() => {
           setGate(false);
           onClose();
-          nav(owner?.role === 'teacher' ? '/checkout/school' : `/checkout/${owner?.plan === 'single' ? 'single' : 'family'}`);
+          nav(owner?.role === 'teacher' ? '/checkout/school' : '/checkout/family?period=weekly');
         }}
       />
     </>

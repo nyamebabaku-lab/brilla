@@ -83,12 +83,24 @@ export const useDB = create(
     }),
     {
       name: 'brilla-db',
-      version: 2,
+      version: 3,
       // v2: add demo records introduced later (e.g. the expired-plan family) without touching the user's own data.
-      migrate: (state) => {
+      migrate: (state, version) => {
         const seed = buildSeed();
         const addMissing = (col) => [...(state[col] || []), ...seed[col].filter((x) => !(state[col] || []).some((y) => y.id === x.id))];
-        return { ...state, users: addMissing('users'), children: addMissing('children'), subscriptions: addMissing('subscriptions'), payments: addMissing('payments') };
+        let next = { ...state, users: addMissing('users'), children: addMissing('children'), subscriptions: addMissing('subscriptions'), payments: addMissing('payments') };
+        // v3: one Family plan (GH₵25/week), 10 free lessons, school accounts off; old Single plans become Family.
+        if (version < 3) {
+          const toFamily = (x) => (x.plan === 'single' ? { ...x, plan: 'family' } : x);
+          next = {
+            ...next,
+            users: next.users.map(toFamily),
+            subscriptions: next.subscriptions.map(toFamily),
+            payments: next.payments.map(toFamily),
+            settings: { ...(next.settings || {}), plans: DEFAULT_SETTINGS.plans, freeLessons: DEFAULT_SETTINGS.freeLessons, schoolsEnabled: false },
+          };
+        }
+        return next;
       },
       storage: safeStorage,
       merge: (persisted, current) => ({ ...current, ...persisted, prefs: { ...current.prefs, ...(persisted?.prefs || {}) }, settings: { ...DEFAULT_SETTINGS, ...(persisted?.settings || {}) } }),

@@ -7,21 +7,24 @@ export const AVATARS = ['🦁', '🐯', '🐼', '🐨', '🐸', '🦊', '🐰', 
 export const SECRET_PICTURES = ['🍎', '🚗', '⭐', '🐟', '🌸', '⚽', '🎈', '🌙', '🍌'];
 export const STICKERS = ['🦄', '🌈', '🚀', '🦖', '🍦', '🎸', '🏆', '🐙', '🌻', '🎨', '🦋', '🍩', '⚡', '🐳', '🎉', '👑', '🐝', '🍉', '🪐', '🦜', '🧸', '🎁', '🐢', '🌟'];
 
+// One plan for families. The School plan is kept for when Admin switches school accounts on.
 export const DEFAULT_PLANS = {
-  single: { id: 'single', name: 'Single', tagline: 'One child, all lessons', emoji: '🧒', maxKids: 1, perSeat: false, prices: { weekly: 10, monthly: 30, yearly: 300 }, features: ['1 child profile', 'All subjects for their class', 'Progress reports', 'Works offline'] },
-  family: { id: 'family', name: 'Family', tagline: 'Up to 5 children', emoji: '👨‍👩‍👧‍👦', maxKids: 5, perSeat: false, prices: { weekly: 20, monthly: 60, yearly: 600 }, features: ['Up to 5 child profiles', 'Each child at their own level', 'Parent dashboard and screen time', 'Works offline'], popular: true },
-  school: { id: 'school', name: 'School', tagline: 'Per student, for teachers', emoji: '🏫', maxKids: 500, perSeat: true, prices: { weekly: 5, monthly: 15, yearly: 150 }, features: ['Classes with join codes', 'Assign lessons and due dates', 'Class progress reports', 'Picture-password logins for pupils'] },
+  family: { id: 'family', name: 'Brilla Family', tagline: 'Up to 5 children, every subject', emoji: '👨‍👩‍👧‍👦', maxKids: 5, perSeat: false, prices: { weekly: 25, monthly: 100, yearly: 1300 }, features: ['Up to 5 child profiles', 'Each child at their own class level', 'A new unit of 50 lessons every week', 'Parent dashboard and screen time', 'Works offline'], popular: true },
+  school: { id: 'school', name: 'School', tagline: 'Per pupil, for teachers', emoji: '🏫', maxKids: 2000, perSeat: true, schoolOnly: true, prices: { weekly: 5, monthly: 20, yearly: 260 }, features: ['Classes with join codes', 'Assign lessons and due dates', 'Class progress reports', 'Picture-password logins for pupils'] },
 };
+/** Plans families can buy right now. */
+export const visiblePlans = (settings) => Object.values(settings.plans).filter((p) => !p.schoolOnly || settings.schoolsEnabled);
 export const PERIODS = [
   { id: 'weekly', label: 'Weekly', days: 7, per: 'week' },
-  { id: 'monthly', label: 'Monthly', days: 30, per: 'month' },
-  { id: 'yearly', label: 'Yearly', days: 365, per: 'year' },
+  { id: 'monthly', label: 'Monthly', days: 28, per: 'month (4 weeks)' },
+  { id: 'yearly', label: 'Yearly', days: 364, per: 'year (52 weeks)' },
 ];
 
 export const DEFAULT_SETTINGS = {
   appName: 'Brilla',
   currency: 'GH₵',
-  freeLessons: 3,
+  freeLessons: 10,
+  schoolsEnabled: false,
   plans: DEFAULT_PLANS,
   presets: DEFAULT_PRESETS,
   defaultTheme: DEFAULT_THEME,
@@ -52,7 +55,7 @@ export function buildSeed() {
   const users = [
     { id: 'u_admin', role: 'admin', name: 'Brilla Admin', email: 'admin@brilla.app', phone: '0240000001', password: 'demo123', createdAt: iso(200) },
     { id: 'u_parent', role: 'parent', plan: 'family', name: 'Adwoa Mensah', email: 'parent@brilla.app', phone: '0244123456', password: 'demo123', pin: '1234', createdAt: iso(60) },
-    { id: 'u_single', role: 'parent', plan: 'single', name: 'Kwesi Boateng', email: 'single@brilla.app', phone: '0201234567', password: 'demo123', pin: '1234', createdAt: iso(3) },
+    { id: 'u_single', role: 'parent', plan: 'family', name: 'Kwesi Boateng', email: 'single@brilla.app', phone: '0201234567', password: 'demo123', pin: '1234', createdAt: iso(3) },
     { id: 'u_expired', role: 'parent', plan: 'family', name: 'Efua Ansah', email: 'expired@brilla.app', phone: '0277123456', password: 'demo123', pin: '1234', createdAt: iso(40) },
     { id: 'u_teacher', role: 'teacher', plan: 'school', name: 'Mrs. Agyeman', schoolName: 'Sunrise Academy', email: 'teacher@brilla.app', phone: '0559876543', password: 'demo123', pin: '1234', createdAt: iso(90) },
   ];
@@ -80,20 +83,22 @@ export function buildSeed() {
 
   // Subscriptions + payment history (extra customers give the admin dashboard real-looking numbers).
   const subscriptions = [
-    { id: 's_parent', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 60, status: 'active', autoRenew: true, startedAt: iso(12), expiresAt: addDays(iso(12), 30) },
-    { id: 's_expired', userId: 'u_expired', plan: 'family', period: 'monthly', seats: 1, amount: 60, status: 'active', autoRenew: true, startedAt: iso(31), expiresAt: addDays(iso(31), 30) },
-    { id: 's_teacher', userId: 'u_teacher', plan: 'school', period: 'yearly', seats: 30, amount: 4500, status: 'active', autoRenew: true, startedAt: iso(85), expiresAt: addDays(iso(85), 365) },
+    // The Family demo has paid for 40 days so far (a month, then a renewal), so 6 units are open.
+    { id: 's_parent_old', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 100, status: 'renewed', autoRenew: true, startedAt: iso(40), expiresAt: iso(12) },
+    { id: 's_parent', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 100, status: 'active', autoRenew: true, startedAt: iso(12), expiresAt: addDays(iso(12), 28) },
+    { id: 's_expired', userId: 'u_expired', plan: 'family', period: 'monthly', seats: 1, amount: 100, status: 'active', autoRenew: true, startedAt: iso(29), expiresAt: addDays(iso(29), 28) },
+    { id: 's_teacher', userId: 'u_teacher', plan: 'school', period: 'yearly', seats: 30, amount: 7800, status: 'active', autoRenew: true, startedAt: iso(85), expiresAt: addDays(iso(85), 364) },
   ];
   const payments = [
-    { id: 'p_1', ref: 'BRL204611A', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 60, method: 'mtn', account: '0244123456', status: 'success', at: iso(42) },
-    { id: 'p_2', ref: 'BRL318872C', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 60, method: 'mtn', account: '0244123456', status: 'success', at: iso(12) },
-    { id: 'p_e1', ref: 'BRL771204Q', userId: 'u_expired', plan: 'family', period: 'monthly', seats: 1, amount: 60, method: 'telecel', account: '0277123456', status: 'success', at: iso(31) },
-    { id: 'p_3', ref: 'BRL551023K', userId: 'u_teacher', plan: 'school', period: 'yearly', seats: 30, amount: 4500, method: 'card', account: '**** 4242', status: 'success', at: iso(85) },
+    { id: 'p_1', ref: 'BRL204611A', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 100, method: 'mtn', account: '0244123456', status: 'success', at: iso(40) },
+    { id: 'p_2', ref: 'BRL318872C', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 100, method: 'mtn', account: '0244123456', status: 'success', at: iso(12) },
+    { id: 'p_e1', ref: 'BRL771204Q', userId: 'u_expired', plan: 'family', period: 'monthly', seats: 1, amount: 100, method: 'telecel', account: '0277123456', status: 'success', at: iso(29) },
+    { id: 'p_3', ref: 'BRL551023K', userId: 'u_teacher', plan: 'school', period: 'yearly', seats: 30, amount: 7800, method: 'card', account: '**** 4242', status: 'success', at: iso(85) },
   ];
   const firstNames = ['Akua', 'Kweku', 'Afia', 'Yaa', 'Kofi', 'Mavis', 'Elikem', 'Sena', 'Ato', 'Naa', 'Joyce', 'Daniel', 'Grace', 'Samuel', 'Linda', 'Isaac'];
   const lastNames = ['Owusu', 'Asante', 'Addo', 'Darko', 'Quaye', 'Tetteh', 'Ofori', 'Amoah', 'Sarpong', 'Nkrumah'];
   for (let i = 0; i < 22; i++) {
-    const plan = pick(r, ['single', 'single', 'family', 'family', 'family', 'school']);
+    const plan = pick(r, ['family', 'family', 'family', 'family', 'family', 'school']);
     const period = pick(r, ['weekly', 'monthly', 'monthly', 'monthly', 'yearly']);
     const seats = plan === 'school' ? int(r, 15, 40) : 1;
     const price = DEFAULT_PLANS[plan].prices[period] * seats;

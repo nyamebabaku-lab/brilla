@@ -6,6 +6,7 @@ import { Modal } from './ui';
 import { useDB } from '../data/store';
 import { PERIODS, visiblePlans } from '../data/seed';
 import { UNIT_SIZE, UNITS_PER_SUBJECT } from '../curriculum';
+import { IS_APP } from '../lib/platform';
 import { useOnline, useUser } from '../lib/hooks';
 import { cls, money } from '../lib/format';
 import { yearlySaving } from '../lib/payments';
@@ -19,7 +20,7 @@ export function PublicHeader() {
         <Logo />
       </Link>
       <nav className="flex items-center gap-1.5 sm:gap-2">
-        <Link to="/pricing" className="btn-ghost hidden px-3 sm:inline-flex">
+        <Link to="/pricing" className="btn-ghost px-3">
           Pricing
         </Link>
         {schoolsOn && (
@@ -114,7 +115,7 @@ if (typeof window !== 'undefined') {
 }
 export function InstallButton({ className }) {
   const [ios, setIos] = useState(false);
-  const standalone = typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone);
+  const standalone = IS_APP || (typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone));
   if (standalone) return null;
   const click = async () => {
     if (deferredPrompt) {

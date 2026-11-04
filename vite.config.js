@@ -2,11 +2,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
+// `vite build --mode app` makes the Android app build: no demo data, no service worker (files ship inside the APK).
+export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [
     react(),
     VitePWA({
+      disable: mode === 'app',
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
@@ -37,4 +39,4 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1500,
   },
-});
+}));

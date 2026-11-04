@@ -9,6 +9,7 @@ import { useTheme, useUser } from '../../lib/hooks';
 import { METHODS, charge, completePurchase, periodOf, quote } from '../../lib/payments';
 import { activeSub } from '../../lib/access';
 import { UNITS_PER_SUBJECT } from '../../curriculum';
+import { IS_APP } from '../../lib/platform';
 import { cls, fmtDate, money } from '../../lib/format';
 import { sfx } from '../../lib/sfx';
 
@@ -126,12 +127,12 @@ export default function Checkout() {
                 </div>
               </div>
               {!isCard ? (
-                <Field label="Mobile money number" hint="Demo: numbers ending in 000 are declined">
+                <Field label="Mobile money number" hint={IS_APP ? undefined : "Demo: numbers ending in 000 are declined"}>
                   <input className="input text-lg" inputMode="tel" value={account} onChange={(e) => setAccount(e.target.value)} placeholder="024 123 4567" />
                 </Field>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Card number" hint="Demo: cards ending in 0002 are declined" className="sm:col-span-2">
+                  <Field label="Card number" hint={IS_APP ? undefined : "Demo: cards ending in 0002 are declined"} className="sm:col-span-2">
                     <input className="input text-lg tracking-wider" inputMode="numeric" value={card.number} onChange={(e) => setCard((c) => ({ ...c, number: e.target.value.replace(/[^\d ]/g, '').slice(0, 23) }))} placeholder="4242 4242 4242 4242" />
                   </Field>
                   <Field label="Expiry (MM/YY)">
@@ -198,7 +199,7 @@ export default function Checkout() {
                   {current.plan === planId ? `This adds ${periodOf(period).days} days after your current end date (${fmtDate(current.expiresAt)}).` : `Your ${settings.plans[current.plan]?.name} plan will be replaced by ${plan.name} from today.`}
                 </p>
               )}
-              <p className="text-xs text-slate-400">Demo checkout: no real money is taken. Real MoMo and card payments come with the Paystack connection.</p>
+              <p className="text-xs text-slate-400">{IS_APP ? 'Test mode: no real money is taken yet.' : 'Demo checkout: no real money is taken. Real MoMo and card payments come with the Paystack connection.'}</p>
             </aside>
           </>
         )}

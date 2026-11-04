@@ -7,6 +7,8 @@ import { Brill } from './components/brand';
 import { useDB } from './data/store';
 import { usePrefsSync } from './lib/hooks';
 import Landing from './pages/public/Landing';
+import AppWelcome from './pages/public/AppWelcome';
+import { IS_APP } from './lib/platform';
 import { Login, Signup, ClassLogin } from './pages/public/Auth';
 import Pricing from './pages/public/Pricing';
 import Checkout from './pages/public/Checkout';
@@ -68,7 +70,7 @@ export default function App() {
       <div className="relative z-[1]">
         <Suspense fallback={<Loading />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={IS_APP ? <AppWelcome /> : <Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/class" element={<ClassLogin />} />
@@ -82,7 +84,8 @@ export default function App() {
             <Route path="/kid/:childId/theme" element={<RequireRole roles={['parent', 'teacher', 'admin', 'student']}><ThemePicker /></RequireRole>} />
             <Route path="/parent/*" element={<RequireRole roles={['parent']}><ParentDash /></RequireRole>} />
             <Route path="/teacher/*" element={<RequireRole roles={['teacher']}><TeacherDash /></RequireRole>} />
-            <Route path="/admin/*" element={<RequireRole roles={['admin']}><AdminDash /></RequireRole>} />
+            {/* Admin lives on the website only. */}
+            <Route path="/admin/*" element={IS_APP ? <Navigate to="/" replace /> : <RequireRole roles={['admin']}><AdminDash /></RequireRole>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

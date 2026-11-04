@@ -7,6 +7,7 @@ import { useDB } from '../../data/store';
 import { SECRET_PICTURES } from '../../data/seed';
 import { useTheme } from '../../lib/hooks';
 import { cls } from '../../lib/format';
+import { IS_APP } from '../../lib/platform';
 
 const DEMOS = [
   { email: 'parent@brilla.app', label: 'Family parent', emoji: '👨‍👩‍👧', note: '3 kids · 6 weeks paid, 6 units open' },
@@ -48,7 +49,7 @@ export function Login() {
   return (
     <div>
       <PublicHeader />
-      <div className="mx-auto grid max-w-5xl gap-6 px-4 pb-16 md:grid-cols-2">
+      <div className={cls('mx-auto grid gap-6 px-4 pb-16', IS_APP ? 'max-w-md' : 'max-w-5xl md:grid-cols-2')}>
         <form onSubmit={submit} className="card space-y-4 p-6 sm:p-8">
           <div className="flex items-center gap-3">
             <Brill size={56} />
@@ -80,6 +81,7 @@ export function Login() {
             )}
           </p>
         </form>
+        {!IS_APP && (
         <div className="card p-6 sm:p-8">
           <h2 className="text-xl font-semibold">Try a demo account</h2>
           <p className="mb-4 text-sm text-slate-500">One tap, no password needed (all demo passwords are demo123, parent PIN 1234).</p>
@@ -109,6 +111,7 @@ export function Login() {
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

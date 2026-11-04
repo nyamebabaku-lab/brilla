@@ -1,0 +1,50 @@
+name: Build Android APK
+
+# Builds the Brilla Android app (debug-signed, installable test APK) and publishes it
+# to the "android-latest" GitHub Release on every push to main.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run build:app
+      - run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk brilla.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brilla-apk
+          path: brilla.apk
+      - name: Publish to the android-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest brilla.apk \
+            --title "Brilla Android (latest test build)" \
+            --notes "Installable test APK built from ${GITHUB_SHA::7}. Data is saved on the phone only and payments are in test mode." \
+            --prerelease

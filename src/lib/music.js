@@ -36,7 +36,7 @@ let duck = 1;
 let lessonDuck = 1;
 const listeners = new Set();
 
-const BASE = 0.07; // music sits well under speech and sound effects
+const BASE = 0.11; // music sits under speech and sound effects
 const level = () => BASE * volume * duck * lessonDuck;
 
 function applyLevel() {
@@ -138,6 +138,6 @@ export function duckForSpeech(on) {
 }
 /** Quieter during lessons so children can concentrate. */
 export function setLessonMode(on) {
-  lessonDuck = on ? 0.55 : 1;
+  lessonDuck = on ? 0.65 : 1;
   applyLevel();
 }

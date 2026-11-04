@@ -77,3 +77,10 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Break games */
+@keyframes rise {
+  from { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-60vh) rotate(3deg); }
+  to { transform: translateY(-125vh) rotate(-3deg); }
+}

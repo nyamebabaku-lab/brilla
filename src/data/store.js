@@ -2,6 +2,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { buildSeed, DEFAULT_SETTINGS } from './seed';
+import { IS_APP } from '../lib/platform';
+
+const seed = () => buildSeed({ demo: !IS_APP });
 import { uid, nowISO, todayKey } from '../lib/format';
 
 const safeStorage = createJSONStorage(() => ({
@@ -31,7 +34,7 @@ const safeStorage = createJSONStorage(() => ({
 export const useDB = create(
   persist(
     (set) => ({
-      ...buildSeed(),
+      ...seed(),
       session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 },
       prefs: { sound: true, voice: true, music: true, musicVolume: 0.5 },
 
@@ -79,15 +82,15 @@ export const useDB = create(
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       setLessonOverride: (lessonId, patch) =>
         set((s) => ({ settings: { ...s.settings, lessonOverrides: { ...s.settings.lessonOverrides, [lessonId]: { ...s.settings.lessonOverrides[lessonId], ...patch } } } })),
-      resetDemo: () => set({ ...buildSeed(), session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 } }),
+      resetDemo: () => set({ ...seed(), session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 } }),
     }),
     {
-      name: 'brilla-db',
+      name: IS_APP ? 'brilla-app' : 'brilla-db',
       version: 5,
       // v2: add demo records introduced later (e.g. the expired-plan family) without touching the user's own data.
       migrate: (state, version) => {
-        const seed = buildSeed();
-        const addMissing = (col) => [...(state[col] || []), ...seed[col].filter((x) => !(state[col] || []).some((y) => y.id === x.id))];
+        const start = seed();
+        const addMissing = (col) => [...(state[col] || []), ...start[col].filter((x) => !(state[col] || []).some((y) => y.id === x.id))];
         let next = { ...state, users: addMissing('users'), children: addMissing('children'), subscriptions: addMissing('subscriptions'), payments: addMissing('payments') };
         // v3: one Family plan (GH₵25/week), 10 free lessons, school accounts off; old Single plans become Family.
         if (version < 3) {

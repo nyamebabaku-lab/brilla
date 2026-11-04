@@ -1,9 +1,14 @@
 // Read-aloud using the device's built-in voice (works offline on iOS, Android and desktop).
+// In the Android app the browser speech API isn't reliable, so the phone's own text-to-speech engine is used instead.
 // Phase 2 can swap `say` for recorded voice-overs without touching callers.
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { duckForSpeech } from './music';
+import { IS_NATIVE } from './platform';
+
+let nativeVoices = [];
 
 export function speechSupported() {
-  return typeof speechSynthesis !== 'undefined';
+  return IS_NATIVE || typeof speechSynthesis !== 'undefined';
 }
 
 let enabled = true;
@@ -43,8 +48,9 @@ export function voiceScore(v) {
 
 export function listVoices() {
   if (!speechSupported()) return [];
-  return speechSynthesis
-    .getVoices()
+  // Native voices are chosen by their position in the phone's list, so remember it.
+  const raw = IS_NATIVE ? nativeVoices.map((v, index) => ({ ...v, index })) : speechSynthesis.getVoices();
+  return raw
     .filter((v) => /^en/i.test(v.lang))
     .map((v) => ({ voice: v, name: v.name, lang: v.lang, uri: v.voiceURI, gender: voiceGender(v), score: voiceScore(v) }))
     .sort((a, b) => b.score - a.score);
@@ -63,7 +69,14 @@ function pickVoice() {
   return { voice: best.voice, pitch: gender === 'male' ? (otherGender ? 0.75 : 0.88) : otherGender ? 1.25 : 1.08 };
 }
 
-if (typeof speechSynthesis !== 'undefined') {
+if (IS_NATIVE) {
+  TextToSpeech.getSupportedVoices()
+    .then(({ voices }) => {
+      nativeVoices = voices || [];
+      chosen = pickVoice();
+    })
+    .catch(() => {});
+} else if (typeof speechSynthesis !== 'undefined') {
   chosen = pickVoice();
   speechSynthesis.onvoiceschanged = () => {
     chosen = pickVoice();
@@ -90,6 +103,17 @@ export const currentVoiceName = () => chosen?.voice?.name || 'Device voice';
 export function say(text, { rate = 0.95, pitch, interrupt = true, lang } = {}) {
   return new Promise((resolve) => {
     if (!enabled || !text || !speechSupported()) return resolve();
+    if (IS_NATIVE) {
+      if (!chosen) chosen = pickVoice();
+      duckForSpeech(true);
+      TextToSpeech.speak({ text: String(text), lang: lang || chosen?.voice?.lang || 'en-GB', rate, pitch: pitch ?? chosen?.pitch ?? 1, voice: chosen?.voice?.index, queueStrategy: interrupt ? 0 : 1 })
+        .catch(() => {})
+        .finally(() => {
+          duckForSpeech(false);
+          resolve();
+        });
+      return;
+    }
     try {
       if (interrupt) speechSynthesis.cancel();
       if (!chosen) chosen = pickVoice();
@@ -116,7 +140,8 @@ export function say(text, { rate = 0.95, pitch, interrupt = true, lang } = {}) {
 }
 
 export function stopSpeaking() {
-  if (speechSupported()) speechSynthesis.cancel();
+  if (IS_NATIVE) TextToSpeech.stop().catch(() => {});
+  else if (speechSupported()) speechSynthesis.cancel();
 }
 
 // Text-to-speech says letter *names*; these spellings make it say letter *sounds* instead.

@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import KidLayout, { useKid } from './KidLayout';
 import Paywall from './Paywall';
 import UnitLocked from './UnitLocked';
+import BreakGame from './BreakGame';
 import { useDB } from '../../data/store';
 import { STICKERS } from '../../data/seed';
 import { buildLesson, lessonsFor, UNIT_SIZE } from '../../curriculum';
@@ -36,6 +37,7 @@ function Player({ childId, lessonId }) {
   const [i, setI] = useState(0);
   const [cheer, setCheer] = useState(null);
   const [finished, setFinished] = useState(null);
+  const [breakState, setBreakState] = useState('offer'); // offer | playing | done
   const tally = useRef({ mistakes: 0, questions: 0 });
 
   const lesson = useMemo(() => (child ? buildLesson(lessonId, { track: child.track, childName: child.name, lang: child.localLang, settings, attempt }) : null), [child, lessonId, settings, attempt]);
@@ -93,6 +95,8 @@ function Player({ childId, lessonId }) {
     );
   if (!canOpen(meta)) return <LockedLesson child={child} isStudent={isStudent} back={`/kid/${child.id}/s/${meta.subjectId}`} lesson={meta} />;
 
+  // A game break is offered after lessons 10, 20, 30, 40 and 50 of each unit.
+  const isBreak = !!finished && !meta.custom && (meta.order % UNIT_SIZE) % 10 === 9;
   const subject = subjectById(lesson.meta.subjectId);
   const step = lesson.steps[Math.min(i, lesson.steps.length - 1)];
   const Activity = ACTIVITIES[step.type];
@@ -133,6 +137,21 @@ function Player({ childId, lessonId }) {
               <span className="text-xl font-semibold">Added to your sticker book</span>
             </span>
           </div>
+          {isBreak && breakState === 'offer' && (
+            <div className="card w-full p-5 animate-pop">
+              <div className="text-5xl">🎮</div>
+              <h2 className="mt-1 text-2xl font-bold">Break time!</h2>
+              <p className="text-slate-600">You finished {((meta.order % UNIT_SIZE) + 1)} lessons in this unit. Play a quick game?</p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+                <button onClick={() => setBreakState('playing')} className="btn-accent px-8 py-3 text-xl">
+                  ▶ Play a game
+                </button>
+                <button onClick={() => setBreakState('done')} className="btn-white px-6 py-3 text-lg">
+                  Keep learning
+                </button>
+              </div>
+            </div>
+          )}
           <div className="mt-2 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
             {nextLesson && (
               <button onClick={() => nav(`/kid/${child.id}/l/${nextLesson.id}`)} className="btn-accent px-7 py-3.5 text-xl">
@@ -164,6 +183,7 @@ function Player({ childId, lessonId }) {
         </div>
       )}
 
+      {breakState === 'playing' && <BreakGame child={child} onClose={() => setBreakState('done')} />}
       {cheer && (
         <div className="pointer-events-none fixed inset-x-0 top-1/3 z-40 flex justify-center">
           <div className="flex items-center gap-2 animate-pop">

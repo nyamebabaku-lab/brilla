@@ -50,7 +50,9 @@ export const DEFAULT_SETTINGS = {
 
 const iso = (daysAgo) => addDays(new Date().toISOString(), -daysAgo);
 
-export function buildSeed() {
+/** Starting data. `demo: false` (the Android app) starts empty apart from settings. */
+export function buildSeed({ demo = true } = {}) {
+  if (!demo) return { users: [], children: [], classes: [], assignments: [], subscriptions: [], payments: [], progress: {}, usage: {}, stickers: {}, gallery: {}, settings: DEFAULT_SETTINGS };
   const r = rng(42);
   const users = [
     { id: 'u_admin', role: 'admin', name: 'Brilla Admin', email: 'admin@brilla.app', phone: '0240000001', password: 'demo123', createdAt: iso(200) },

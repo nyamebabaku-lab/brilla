@@ -85,7 +85,7 @@ export function WriteLines({ step, onDone }) {
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center gap-3">
         <SpeakButton text={step.text} />
-        <h2 className="text-2xl font-semibold sm:text-3xl">Copy it neatly</h2>
+        <h2 className="on-bg text-2xl font-semibold sm:text-3xl">Copy it neatly</h2>
       </div>
       <div className={cls('card px-6 py-4 text-center text-4xl text-brand-800 sm:text-5xl', step.cursive ? 'font-cursive font-bold' : 'font-medium')}>{step.text}</div>
       <div ref={wrap} className="flex w-full justify-center">
@@ -118,7 +118,7 @@ export function Compose({ step, onDone, onSaveText }) {
     <div className="flex w-full flex-col items-center gap-4">
       <div className="flex items-center gap-3">
         <SpeakButton text={step.prompt} />
-        <h2 className="text-balance text-center text-2xl font-semibold">{step.prompt}</h2>
+        <h2 className="on-bg text-balance text-center text-2xl font-semibold">{step.prompt}</h2>
       </div>
       <div className="card w-full max-w-2xl p-3">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={9} placeholder="Start writing here…" className="w-full resize-none rounded-2xl bg-[repeating-linear-gradient(transparent,transparent_35px,#dbeafe_36px)] p-3 text-xl leading-9 outline-none" />

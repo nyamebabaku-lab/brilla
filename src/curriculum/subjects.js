@@ -10,6 +10,7 @@ export const SUBJECTS = [
   { id: 'english', name: 'English', emoji: '📖', color: '#60a5fa', from: 3, to: 10, blurb: 'Words, reading and grammar' },
   { id: 'writing', name: 'Writing', emoji: '📝', color: '#a78bfa', from: 4, to: 10, blurb: 'Copy, spell and write' },
   { id: 'maths', name: 'Maths', emoji: '🔢', color: '#f87171', from: 0, to: 10, blurb: 'Numbers, shapes and problem solving' },
+  { id: 'language', name: 'Twi & Ga', emoji: '🗣️', color: '#d97706', from: 1, to: 10, blurb: 'Ghanaian languages: greetings, words and sounds' },
   { id: 'science', name: 'Science', emoji: '🔬', color: '#4ade80', from: 3, to: 10, blurb: 'Explore living things and the world' },
 ];
 

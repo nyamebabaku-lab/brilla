@@ -11,6 +11,7 @@ import { cls } from '../../lib/format';
 const DEMOS = [
   { email: 'parent@brilla.app', label: 'Family parent', emoji: '👨‍👩‍👧', note: '3 kids · Family plan active' },
   { email: 'single@brilla.app', label: 'New parent', emoji: '🧒', note: '1 child · free lessons only' },
+  { email: 'expired@brilla.app', label: 'Plan ended', emoji: '⏰', note: 'Family plan ended yesterday · app locked' },
   { email: 'teacher@brilla.app', label: 'Teacher', emoji: '🧑‍🏫', note: 'School plan · 2 classes' },
   { email: 'admin@brilla.app', label: 'Admin', emoji: '🛠️', note: 'Prices, lessons, revenue' },
 ];

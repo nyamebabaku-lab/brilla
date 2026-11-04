@@ -1,46 +1,118 @@
 // Read-aloud using the device's built-in voice (works offline on iOS, Android and desktop).
 // Phase 2 can swap `say` for recorded voice-overs without touching callers.
+import { duckForSpeech } from './music';
+
+export function speechSupported() {
+  return typeof speechSynthesis !== 'undefined';
+}
 
 let enabled = true;
-let voice = null;
+let gender = 'female';
+let overrides = { female: null, male: null };
+let chosen = null; // { voice, pitch }
 
+// Names of common device voices, so we can offer a female and a male instructor.
+const FEMALE = /(female|woman|samantha|karen|serena|moira|tessa|fiona|victoria|allison|\bava\b|susan|zira|hazel|aria|jenny|libby|sonia|natasha|emma|olivia|\bamy\b|joanna|kendra|salli|kimberly|\bivy\b|catherine|martha|nicky|stephanie|clara|abeni|ezinne|leah|maisie|michelle|\bsara\b|\bzoe\b|ashley|cora|elizabeth|jane|nancy|google us english|en-gb-x-gba|en-gb-x-gbc|en-gb-x-gbg|en-us-x-sfg|en-us-x-tpc|en-ng-x)/i;
+const MALE = /(\bmale\b|daniel|\balex\b|\bfred\b|oliver|arthur|rishi|aaron|\btom\b|gordon|david|\bmark\b|george|\bguy\b|ryan|thomas|brian|matthew|joey|justin|\beric\b|christopher|roger|steffan|william|elliot|ethan|\bliam\b|noah|chukwuma|andrew|brandon|davis|jason|tony|google uk english male|en-gb-x-gbd|en-gb-x-rjs|en-us-x-iom|en-us-x-tpd|en-us-x-iol)/i;
+// Novelty / very synthetic voices that sound like robots.
+const ROBOTIC = /(espeak|robot|whisper|zarvox|bad news|bells|boing|bubbles|cellos|trinoids|albert|jester|organ|superstar|wobble|junior|ralph|kathy|princess|grandma|grandpa|rocko|shelley|\breed\b|sandy|\bflo\b|eddy|good news|hysterical|deranged|pipe)/i;
+
+export function voiceGender(v) {
+  if (FEMALE.test(v.name)) return 'female';
+  if (MALE.test(v.name)) return 'male';
+  return null;
+}
+
+/** Higher = more natural-sounding. Prefers neural/"Natural"/enhanced voices and African/British English. */
+export function voiceScore(v) {
+  let s = 0;
+  if (!/^en/i.test(v.lang)) return -1000;
+  if (ROBOTIC.test(v.name)) s -= 200;
+  if (/natural|neural|premium|enhanced|siri/i.test(v.name)) s += 60;
+  if (/online/i.test(v.name)) s += 40;
+  if (/google/i.test(v.name)) s += 35;
+  if (/network/i.test(v.name)) s += 25;
+  if (/microsoft (david|zira|mark|hazel|george|susan)( desktop)?$/i.test(v.name.replace(/ - .*/, ''))) s -= 10;
+  if (/en[-_](NG|GH|KE|ZA)/i.test(v.lang)) s += 14;
+  else if (/en[-_]GB/i.test(v.lang)) s += 10;
+  else if (/en[-_](US|AU|IE)/i.test(v.lang)) s += 6;
+  // Online voices need internet; offline, prefer voices installed on the device.
+  if (typeof navigator !== 'undefined' && !navigator.onLine && v.localService === false) s -= 150;
+  return s;
+}
+
+export function listVoices() {
+  if (!speechSupported()) return [];
+  return speechSynthesis
+    .getVoices()
+    .filter((v) => /^en/i.test(v.lang))
+    .map((v) => ({ voice: v, name: v.name, lang: v.lang, uri: v.voiceURI, gender: voiceGender(v), score: voiceScore(v) }))
+    .sort((a, b) => b.score - a.score);
+}
+
+/** Best voice for the chosen instructor. Unknown-gender voices get a gentle pitch change instead. */
 function pickVoice() {
-  if (typeof speechSynthesis === 'undefined') return null;
-  const voices = speechSynthesis.getVoices();
-  const prefs = [/en[-_]GB/i, /en[-_]NG|en[-_]GH|en[-_]ZA/i, /en[-_]US/i, /^en/i];
-  for (const re of prefs) {
-    const v = voices.find((x) => re.test(x.lang) && /female|samantha|karen|serena|google/i.test(x.name)) || voices.find((x) => re.test(x.lang));
-    if (v) return v;
-  }
-  return voices[0] || null;
+  const all = listVoices();
+  if (!all.length) return null;
+  const forced = overrides[gender] && all.find((v) => v.uri === overrides[gender]);
+  if (forced) return { voice: forced.voice, pitch: 1 };
+  const match = all.find((v) => v.gender === gender && v.score > -100);
+  if (match) return { voice: match.voice, pitch: 1 };
+  const best = all.find((v) => v.gender == null) || all[0];
+  const otherGender = best.gender && best.gender !== gender;
+  return { voice: best.voice, pitch: gender === 'male' ? (otherGender ? 0.75 : 0.88) : otherGender ? 1.25 : 1.08 };
 }
 
 if (typeof speechSynthesis !== 'undefined') {
-  voice = pickVoice();
+  chosen = pickVoice();
   speechSynthesis.onvoiceschanged = () => {
-    voice = pickVoice();
+    chosen = pickVoice();
   };
 }
 
-export const speechSupported = () => typeof speechSynthesis !== 'undefined';
 export const setSpeechEnabled = (on) => {
   enabled = on;
   if (!on) stopSpeaking();
 };
+/** 'female' | 'male' — the lesson instructor's voice. */
+export function setInstructor(g) {
+  if (g === gender && chosen) return;
+  gender = g === 'male' ? 'male' : 'female';
+  chosen = pickVoice();
+}
+export function setVoiceOverrides(o) {
+  overrides = { female: o?.female || null, male: o?.male || null };
+  chosen = pickVoice();
+}
+export const currentVoiceName = () => chosen?.voice?.name || 'Device voice';
 
-export function say(text, { rate = 0.9, pitch = 1.15, interrupt = true } = {}) {
-  if (!enabled || !text || !speechSupported()) return;
-  try {
-    if (interrupt) speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(String(text));
-    if (voice) u.voice = voice;
-    u.lang = voice?.lang || 'en-GB';
-    u.rate = rate;
-    u.pitch = pitch;
-    speechSynthesis.speak(u);
-  } catch {
-    /* speech is a nice-to-have */
-  }
+/** Speaks `text`; resolves when finished (or after a safety timeout). */
+export function say(text, { rate = 0.95, pitch, interrupt = true, lang } = {}) {
+  return new Promise((resolve) => {
+    if (!enabled || !text || !speechSupported()) return resolve();
+    try {
+      if (interrupt) speechSynthesis.cancel();
+      if (!chosen) chosen = pickVoice();
+      const u = new SpeechSynthesisUtterance(String(text));
+      if (chosen?.voice) u.voice = chosen.voice;
+      u.lang = lang || chosen?.voice?.lang || 'en-GB';
+      u.rate = rate;
+      u.pitch = pitch ?? chosen?.pitch ?? 1;
+      const done = () => {
+        clearTimeout(guard);
+        duckForSpeech(false);
+        resolve();
+      };
+      // Some browsers never fire `end`; don't let lessons wait forever.
+      const guard = setTimeout(done, 1500 + String(text).length * 110);
+      u.onstart = () => duckForSpeech(true);
+      u.onend = done;
+      u.onerror = done;
+      speechSynthesis.speak(u);
+    } catch {
+      resolve();
+    }
+  });
 }
 
 export function stopSpeaking() {
@@ -54,4 +126,4 @@ export const SOUND_SPELLING = {
   ai: 'ay', ee: 'eee', ie: 'eye', oa: 'oh', ue: 'you', or: 'or', ng: 'ng', oo: 'oo', ch: 'ch', sh: 'shh', th: 'th', qu: 'kwuh',
   ou: 'ow', oi: 'oy', er: 'er', ar: 'ar', ck: 'kuh', ll: 'lll', ss: 'sss', ff: 'fff', wh: 'wuh', ph: 'fff',
 };
-export const sayLetterSound = (s) => say(SOUND_SPELLING[s] || s, { rate: 0.7 });
+export const sayLetterSound = (s) => say(SOUND_SPELLING[s] || s, { rate: 0.75 });

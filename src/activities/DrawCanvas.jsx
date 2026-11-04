@@ -160,7 +160,7 @@ export default function DrawCanvas({ step, onDone, onSave }) {
     <div className="flex flex-col items-center gap-3">
       <div className="flex items-center gap-3">
         <SpeakButton text={step.prompt} />
-        <h2 className="text-balance text-center text-2xl font-semibold sm:text-3xl">
+        <h2 className="on-bg text-balance text-center text-2xl font-semibold sm:text-3xl">
           {step.emoji} {step.prompt}
         </h2>
       </div>

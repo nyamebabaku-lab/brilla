@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Headphones, Palette, ShieldCheck, Smartphone, WifiOff, GraduationCap } from 'lucide-react';
+import { Headphones, Palette, ShieldCheck, Smartphone, WifiOff, GraduationCap, Music, Languages, Presentation } from 'lucide-react';
 import { PublicHeader, InstallButton } from '../../components/common';
 import { Brill, SpeechBubble } from '../../components/brand';
 import { SUBJECTS } from '../../curriculum/subjects';
@@ -12,6 +12,9 @@ import { money } from '../../lib/format';
 
 const FEATURES = [
   { icon: <WifiOff />, title: 'Works offline', body: 'Install once and every lesson works without data. Perfect for the car, the village or a power cut.' },
+  { icon: <Presentation />, title: 'Example first, then practise', body: 'Auntie Akos or Uncle Kwame shows a worked example before every new kind of question, then children try it themselves.' },
+  { icon: <Languages />, title: 'Twi and Ga', body: 'Greetings, numbers, family, animals and more in Ghanaian languages, with recordings by native speakers.' },
+  { icon: <Music />, title: 'Gentle music', body: 'Soft background tunes (classic nursery melodies) that quieten when the teacher speaks. Easy to switch off.' },
   { icon: <Headphones />, title: 'Reads aloud', body: 'Every instruction is spoken, so even children who can’t read yet can learn on their own.' },
   { icon: <GraduationCap />, title: 'GES or International', body: 'Lessons follow the Ghana curriculum with local examples, or switch to an international track.' },
   { icon: <Palette />, title: 'Their colours, their way', body: 'Kids pick a theme (Rainbow, Ocean, Jungle, Candy, Space…) or mix their own colours.' },
@@ -35,7 +38,7 @@ export default function Landing() {
           <h1 className="on-bg text-balance text-5xl font-bold leading-[1.05] sm:text-6xl">
             Learning that feels like <span className="rainbow-text">play</span>.
           </h1>
-          <p className="on-bg-muted mt-5 max-w-lg text-xl">Tracing, colouring, drawing, phonics, maths, science and English, with lessons made for each child’s class. {total}+ lessons that work offline.</p>
+          <p className="on-bg-muted mt-5 max-w-lg text-xl">Tracing, colouring, drawing, phonics, maths, science and English, with lessons made for each child’s class. {total.toLocaleString()} lessons, 1,000 per subject for every class, that work offline.</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/signup" className="btn-accent px-7 py-3.5 text-lg">
               Start free
@@ -84,7 +87,7 @@ export default function Landing() {
 
       {/* Subjects */}
       <section className="mx-auto max-w-6xl px-4 py-10">
-        <h2 className="on-bg mb-6 text-center text-3xl font-semibold">Nine subjects, hundreds of activities</h2>
+        <h2 className="on-bg mb-6 text-center text-3xl font-semibold">Ten subjects, thousands of activities</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SUBJECTS.map((s) => (
             <div key={s.id} className="card flex items-center gap-4 p-5">

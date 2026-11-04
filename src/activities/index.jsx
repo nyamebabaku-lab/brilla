@@ -3,6 +3,8 @@ import TraceCanvas from './TraceCanvas';
 import DrawCanvas from './DrawCanvas';
 import ColorPicture from './ColorPicture';
 import { Compose, WriteLines } from './Writing';
+import WordCard from './WordCard';
+import Example from './Example';
 
 export const ACTIVITIES = {
   choice: Choice,
@@ -17,4 +19,6 @@ export const ACTIVITIES = {
   colour: ColorPicture,
   write: WriteLines,
   compose: Compose,
+  word: WordCard,
+  example: Example,
 };

@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from './components/ui';
+import MusicController from './components/MusicController';
+import SubscriptionWatcher from './components/SubscriptionWatcher';
 import { Brill } from './components/brand';
 import { useDB } from './data/store';
 import { usePrefsSync } from './lib/hooks';
@@ -41,6 +43,8 @@ export default function App() {
   return (
     <HashRouter>
       <Toaster />
+      <MusicController />
+      <SubscriptionWatcher />
       <div className="stars-layer" />
       <div className="relative z-[1]">
         <Suspense fallback={<Loading />}>

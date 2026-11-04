@@ -37,8 +37,8 @@ function Player({ childId, lessonId }) {
   const [finished, setFinished] = useState(null);
   const tally = useRef({ mistakes: 0, questions: 0 });
 
-  const lesson = useMemo(() => (child ? buildLesson(lessonId, { track: child.track, childName: child.name, settings, attempt }) : null), [child, lessonId, settings, attempt]);
-  const list = useMemo(() => (child && lesson ? lessonsFor(lesson.meta.levelId, lesson.meta.subjectId, { track: child.track, childName: child.name, settings }) : []), [child, lesson, settings]);
+  const lesson = useMemo(() => (child ? buildLesson(lessonId, { track: child.track, childName: child.name, lang: child.localLang, settings, attempt }) : null), [child, lessonId, settings, attempt]);
+  const list = useMemo(() => (child && lesson ? lessonsFor(lesson.meta.levelId, lesson.meta.subjectId, { track: child.track, childName: child.name, lang: child.localLang, settings }) : []), [child, lesson, settings]);
   const meta = list.find((l) => l.id === lessonId);
   const nextLesson = meta ? list[meta.order + 1] : null;
 
@@ -48,7 +48,7 @@ function Player({ childId, lessonId }) {
   useEffect(() => {
     const st = lesson?.steps[i];
     if (!st || finished) return;
-    if (st.type === 'choice' || st.type === 'learn') {
+    if ((st.type === 'choice' && st.say !== '') || st.type === 'learn') {
       const t = setTimeout(() => say(st.say || st.prompt), 350);
       return () => clearTimeout(t);
     }

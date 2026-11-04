@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import KidLayout, { useKid } from './KidLayout';
 import Paywall from './Paywall';
 import { useDB } from '../../data/store';
-import { lessonsFor } from '../../curriculum';
+import { lessonsFor, UNIT_SIZE } from '../../curriculum';
 import { subjectById } from '../../curriculum/subjects';
 import { useChildAccess } from '../../lib/access';
 import { Stars } from '../../components/ui';
@@ -23,12 +23,21 @@ export default function SubjectMap() {
   const settings = useDB((s) => s.settings);
   const prog = useDB((s) => s.progress[childId]);
   const { unlocked } = useChildAccess(child);
+  const update = useDB((s) => s.update);
   const [paywall, setPaywall] = useState(false);
+  const [unit, setUnit] = useState(null);
+  const unitBar = useRef(null);
   const subject = subjectById(subjectId);
-  const lessons = useMemo(() => (child ? lessonsFor(child.levelId, subjectId, { track: child.track, childName: child.name, settings }) : []), [child, subjectId, settings]);
+  const lessons = useMemo(() => (child ? lessonsFor(child.levelId, subjectId, { track: child.track, childName: child.name, lang: child.localLang, settings }) : []), [child, subjectId, settings]);
+  useEffect(() => {
+    unitBar.current?.querySelector('[data-active="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [unit, lessons.length]);
   if (!child || !subject) return <KidLayout child={child} />;
 
   const currentIdx = lessons.findIndex((l) => !prog?.[l.id]);
+  const units = Math.ceil(lessons.length / UNIT_SIZE);
+  const activeUnit = unit ?? Math.max(0, Math.floor(Math.max(0, currentIdx) / UNIT_SIZE));
+  const shown = lessons.slice(activeUnit * UNIT_SIZE, (activeUnit + 1) * UNIT_SIZE);
   const open = (l) => {
     if (!l.free && !unlocked) {
       sfx('wrong');
@@ -51,14 +60,44 @@ export default function SubjectMap() {
             </p>
           </div>
         </div>
+        {subjectId === 'language' && (
+          <div className="mb-6 flex flex-wrap justify-center gap-2">
+            {Object.values(settings.languages || {}).map((l) => (
+              <button
+                key={l.id}
+                onClick={() => {
+                  update('children', child.id, { localLang: l.id });
+                  sfx('pop');
+                  say(l.name);
+                }}
+                className={cls('rounded-2xl px-5 py-2.5 text-lg font-bold shadow-chunky-sm transition', (child.localLang || 'twi') === l.id ? 'bg-amber-500 text-white' : 'bg-white text-slate-700')}
+              >
+                {l.flag} {l.name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div ref={unitBar} className="no-scrollbar -mx-3 mb-5 flex gap-2 overflow-x-auto px-3 pb-1">
+          {Array.from({ length: units }, (_, u) => {
+            const part = lessons.slice(u * UNIT_SIZE, (u + 1) * UNIT_SIZE);
+            const done = part.filter((l) => prog?.[l.id]).length;
+            return (
+              <button key={u} data-active={u === activeUnit} onClick={() => (setUnit(u), sfx('tap'))} className={cls('flex shrink-0 flex-col items-center rounded-2xl px-3 py-1.5 text-sm font-semibold shadow-chunky-sm', u === activeUnit ? 'bg-brand-600 text-white' : 'bg-white text-slate-600')}>
+                <span>Unit {u + 1}</span>
+                <span className={cls('text-xs', u === activeUnit ? 'opacity-90' : 'text-slate-400')}>{done === part.length ? '✅ done' : `${done}/${part.length}`}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="relative flex flex-col items-center gap-3 pb-10">
-          {lessons.map((l, i) => {
+          {shown.map((l, k) => {
+            const i = activeUnit * UNIT_SIZE + k;
             const done = prog?.[l.id];
             const locked = !l.free && !unlocked;
             const current = i === currentIdx;
             return (
               <div key={l.id} className="relative flex w-full flex-col items-center">
-                {i > 0 && <div className="h-6 w-2 rounded-full bg-white/70" style={{ transform: `translateX(${(OFFSETS[i % 8] + OFFSETS[(i - 1) % 8]) / 2}%)` }} />}
+                {k > 0 && <div className="h-6 w-2 rounded-full bg-white/70" style={{ transform: `translateX(${(OFFSETS[i % 8] + OFFSETS[(i - 1) % 8]) / 2}%)` }} />}
                 <div className="relative flex flex-col items-center" style={{ transform: `translateX(${OFFSETS[i % 8] * 2}%)` }}>
                   {current && !locked && <Brill size={46} className="absolute -left-14 top-2 animate-bob" />}
                   <button
@@ -86,7 +125,13 @@ export default function SubjectMap() {
               </div>
             );
           })}
-          <div className="mt-4 text-5xl">🏆</div>
+          {activeUnit < units - 1 ? (
+            <button onClick={() => (setUnit(activeUnit + 1), window.scrollTo({ top: 0, behavior: 'smooth' }))} className="btn-accent mt-4 px-6 py-3 text-lg">
+              Next: Unit {activeUnit + 2} →
+            </button>
+          ) : (
+            <div className="mt-4 text-5xl">🏆</div>
+          )}
         </div>
       </div>
       <Paywall open={paywall} onClose={() => setPaywall(false)} child={child} isStudent={isStudent} />

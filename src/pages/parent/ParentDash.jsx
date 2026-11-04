@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { listVoices, say, setInstructor } from '../../lib/speech';
+import { INSTRUCTORS } from '../../lib/instructors';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart3, CreditCard, Pencil, Play, Plus, Settings, Trash2, Users } from 'lucide-react';
 import DashShell from '../../components/DashShell';
+import PlanBanner from '../../components/PlanBanner';
 import ChildForm from '../../components/ChildForm';
 import { Bars, SubjectBars } from '../../components/Charts';
 import { PeriodSwitch, PlanCards, GrownUpGate, InstallButton } from '../../components/common';
@@ -54,6 +57,7 @@ export default function ParentDash() {
         </Link>
       }
     >
+      <PlanBanner user={user} />
       {tab === 'progress' && <ProgressTab user={user} goChildren={() => setTab('children')} />}
       {tab === 'children' && <ChildrenTab user={user} autoAdd={!!(params.get('add') || params.get('new'))} />}
       {tab === 'billing' && <BillingTab user={user} />}
@@ -70,7 +74,7 @@ function ProgressTab({ user, goChildren }) {
   const gallery = useDB((s) => s.gallery);
   const [sel, setSel] = useState(kids[0]?.id);
   const child = kids.find((k) => k.id === sel) || kids[0];
-  const catalog = useMemo(() => (child ? catalogFor(child.levelId, { track: child.track, childName: child.name, settings }) : []), [child, settings]);
+  const catalog = useMemo(() => (child ? catalogFor(child.levelId, { track: child.track, childName: child.name, lang: child.localLang, settings }) : []), [child, settings]);
   if (!child) return <Empty emoji="🧒" title="No children yet" body="Add your child to start learning." action={<button onClick={goChildren} className="btn-primary mt-2">Add a child</button>} />;
 
   const prog = progress[child.id] || {};
@@ -120,7 +124,7 @@ function ProgressTab({ user, goChildren }) {
           ) : (
             <ul className="divide-y">
               {recent.map(([id, p]) => {
-                const l = buildLesson(id, { track: child.track, childName: child.name, settings });
+                const l = buildLesson(id, { track: child.track, childName: child.name, lang: child.localLang, settings });
                 const subj = l && subjectById(l.meta.subjectId);
                 return (
                   <li key={id} className="flex items-center gap-3 py-2">
@@ -268,7 +272,7 @@ function BillingTab({ user }) {
               Active until <b>{fmtDate(sub.expiresAt)}</b> ({daysBetween(new Date(), sub.expiresAt)} days left)
             </div>
             <div className="mt-2">
-              <Toggle checked={sub.autoRenew} onChange={(v) => (update('subscriptions', sub.id, { autoRenew: v }), toast.info(v ? 'Auto-renew on' : 'Auto-renew off', v ? 'We’ll send a MoMo prompt before it ends' : 'Your plan stays active until the end date'))} label="Remind me to renew" />
+              <Toggle checked={sub.autoRenew} onChange={(v) => (update('subscriptions', sub.id, { autoRenew: v }), toast.info(v ? 'Reminders on' : 'Reminders off', v ? 'We’ll remind you 3 days before it ends. Nothing is charged automatically.' : 'Your plan stays active until the end date'))} label="Remind me 3 days before it ends" />
             </div>
           </div>
           <button onClick={() => nav(`/checkout/${sub.plan}?period=${sub.period}`)} className="btn-accent">
@@ -355,11 +359,52 @@ function SettingsTab({ user }) {
         <h3 className="font-semibold">On this device</h3>
         <Toggle checked={prefs.voice} onChange={(v) => setPrefs({ voice: v })} label="Read lessons aloud" />
         <Toggle checked={prefs.sound} onChange={(v) => setPrefs({ sound: v })} label="Sound effects" />
+        <VoicePicker />
         <div className="pt-2">
           <InstallButton />
           <p className="mt-2 text-sm text-slate-500">Install Brilla to use it offline like a normal app.</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function VoicePicker() {
+  const prefs = useDB((s) => s.prefs);
+  const setPrefs = useDB((s) => s.setPrefs);
+  const [voices, setVoices] = useState(() => listVoices());
+  useEffect(() => {
+    const t = setTimeout(() => setVoices(listVoices()), 600);
+    return () => clearTimeout(t);
+  }, []);
+  const test = (g) => {
+    setInstructor(g);
+    say(INSTRUCTORS[g].hello);
+  };
+  return (
+    <div className="space-y-3 rounded-2xl bg-slate-50 p-3">
+      <div className="text-sm font-semibold">Instructor voices on this device</div>
+      {['female', 'male'].map((g) => {
+        const key = g === 'female' ? 'voiceFemale' : 'voiceMale';
+        const options = voices.filter((v) => v.gender === g || v.gender == null);
+        return (
+          <div key={g} className="flex items-center gap-2">
+            <span className="text-2xl">{INSTRUCTORS[g].emoji}</span>
+            <select className="input py-1.5 text-sm" value={prefs[key] || ''} onChange={(e) => setPrefs({ [key]: e.target.value || null })}>
+              <option value="">Automatic (most natural voice)</option>
+              {options.map((v) => (
+                <option key={v.uri} value={v.uri}>
+                  {v.name} ({v.lang})
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={() => test(g)} className="btn-soft shrink-0 px-3 py-1.5 text-sm">
+              Test
+            </button>
+          </div>
+        );
+      })}
+      <p className="text-xs text-slate-500">Voices come from your phone or computer. For the clearest sound: on Android install “Speech Services by Google” and download the high-quality English voice; on iPhone go to Settings → Accessibility → Spoken Content → Voices and download an “Enhanced” voice.</p>
     </div>
   );
 }

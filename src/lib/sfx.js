@@ -1,20 +1,11 @@
 // Tiny synthesised sound effects (Web Audio) so the app needs no audio files and works offline.
-let ctx = null;
+import { audioCtx as ac } from './audio';
+
 let enabled = true;
 
 export const setSfxEnabled = (on) => {
   enabled = on;
 };
-
-function ac() {
-  if (!ctx) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
-  }
-  if (ctx.state === 'suspended') ctx.resume();
-  return ctx;
-}
 
 function tone(freq, start, dur, { type = 'sine', vol = 0.15 } = {}) {
   const a = ac();

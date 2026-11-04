@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDB } from '../data/store';
 import { applyTheme } from './theme';
-import { setSpeechEnabled } from './speech';
+import { setSpeechEnabled, setVoiceOverrides } from './speech';
 import { setSfxEnabled } from './sfx';
 
 export const useUser = () => {
@@ -25,6 +25,7 @@ export function usePrefsSync() {
   useEffect(() => {
     setSpeechEnabled(prefs.voice);
     setSfxEnabled(prefs.sound);
+    setVoiceOverrides({ female: prefs.voiceFemale, male: prefs.voiceMale });
   }, [prefs]);
 }
 

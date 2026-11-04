@@ -4,10 +4,13 @@ import { AVATARS, SECRET_PICTURES } from '../data/seed';
 import { LEVELS, levelForAge } from '../curriculum/levels';
 import { TRACKS } from '../curriculum/tracks';
 import { cls } from '../lib/format';
+import { useDB } from '../data/store';
+import { INSTRUCTORS } from '../lib/instructors';
 
 /** Add/edit a child (parents) or pupil (teachers, with secret picture). */
 export default function ChildForm({ open, onClose, onSave, initial, pupil, lockLevel }) {
   const [f, setF] = useState(() => initial || { name: '', age: 5, levelId: 'kg2', track: 'ges', avatar: AVATARS[0], screenLimit: 0, picture: SECRET_PICTURES[0] });
+  const languages = useDB((s) => s.settings.languages || {});
   const set = (patch) => setF((x) => ({ ...x, ...patch }));
   const submit = (e) => {
     e.preventDefault();
@@ -42,6 +45,24 @@ export default function ChildForm({ open, onClose, onSave, initial, pupil, lockL
               {Object.values(TRACKS).map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.flag} {t.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Lesson teacher (voice)">
+            <select className="input" value={f.instructor || 'female'} onChange={(e) => set({ instructor: e.target.value })}>
+              {Object.values(INSTRUCTORS).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.emoji} {t.name} ({t.id})
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Ghanaian language">
+            <select className="input" value={f.localLang || 'twi'} onChange={(e) => set({ localLang: e.target.value })}>
+              {Object.values(languages).map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.flag} {l.name}
                 </option>
               ))}
             </select>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, CreditCard, Eye, EyeOff, LayoutDashboard, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
+import { BookOpen, CreditCard, Eye, EyeOff, Languages, LayoutDashboard, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
+import LanguagesAdmin from './LanguagesAdmin';
 import DashShell from '../../components/DashShell';
 import { Bars } from '../../components/Charts';
 import { Field, Modal, Stat, Toggle, toast } from '../../components/ui';
@@ -8,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { PERIODS } from '../../data/seed';
 import { LEVELS } from '../../curriculum/levels';
 import { subjectsForLevel } from '../../curriculum/subjects';
-import { countAllLessons, lessonsFor } from '../../curriculum';
+import { countAllLessons, lessonsFor, UNIT_SIZE } from '../../curriculum';
 import { isActive } from '../../lib/access';
 import { methodLabel, periodOf } from '../../lib/payments';
 import { BACKGROUNDS, BG_NAMES, themeFromPreset } from '../../lib/theme';
@@ -20,6 +21,7 @@ export default function AdminDash() {
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} /> },
     { id: 'plans', label: 'Plans & prices', icon: <Tag size={16} /> },
     { id: 'lessons', label: 'Lessons', icon: <BookOpen size={16} /> },
+    { id: 'languages', label: 'Twi & Ga', icon: <Languages size={16} /> },
     { id: 'subscribers', label: 'Subscribers', icon: <Users size={16} /> },
     { id: 'payments', label: 'Payments', icon: <CreditCard size={16} /> },
     { id: 'themes', label: 'Themes', icon: <Palette size={16} /> },
@@ -29,6 +31,7 @@ export default function AdminDash() {
       {tab === 'overview' && <Overview />}
       {tab === 'plans' && <Plans />}
       {tab === 'lessons' && <Lessons />}
+      {tab === 'languages' && <LanguagesAdmin />}
       {tab === 'subscribers' && <Subscribers />}
       {tab === 'payments' && <Payments />}
       {tab === 'themes' && <Themes />}
@@ -168,6 +171,11 @@ function Lessons() {
   }, [levelId, sid, settings]);
   const [editing, setEditing] = useState(null);
   const [builder, setBuilder] = useState(null);
+  const [unit, setUnit] = useState(0);
+  const units = Math.ceil(lessons.length / UNIT_SIZE);
+  const u = Math.min(unit, units - 1);
+  // Custom lessons are listed first so they are easy to find among 1000 lessons.
+  const page = [...lessons.filter((l) => l.custom), ...lessons.filter((l) => !l.custom).slice(u * UNIT_SIZE, (u + 1) * UNIT_SIZE)];
 
   const saveCustom = (e) => {
     e.preventDefault();
@@ -200,12 +208,21 @@ function Lessons() {
             ))}
           </select>
         </Field>
+        <Field label={`Unit (${lessons.length} lessons)`} className="w-56">
+          <select className="input" value={u} onChange={(e) => setUnit(Number(e.target.value))}>
+            {Array.from({ length: units }, (_, k) => (
+              <option key={k} value={k}>
+                Unit {k + 1}: lessons {k * UNIT_SIZE + 1}–{Math.min(lessons.length, (k + 1) * UNIT_SIZE)}
+              </option>
+            ))}
+          </select>
+        </Field>
         <button onClick={() => setBuilder({ id: `custom_${uid('l').slice(2)}`, title: '', emoji: '⭐', intro: '', questions: [blankQ()] })} className="btn-accent self-end">
           <Plus size={18} /> New quiz lesson
         </button>
       </div>
       <div className="panel divide-y">
-        {lessons.map((l) => {
+        {page.map((l) => {
           const ov = settings.lessonOverrides[l.id] || {};
           return (
             <div key={l.id} className={cls('flex flex-wrap items-center gap-3 p-3', ov.hidden && 'opacity-50')}>

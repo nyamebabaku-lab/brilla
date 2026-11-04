@@ -25,6 +25,21 @@ export const TRACE_PATHS = {
   heart: 'M50 86 C10 58 6 30 24 20 C36 13 46 20 50 30 C54 20 64 13 76 20 C94 30 90 58 50 86 Z',
 };
 const PATH_NAMES = { down: 'a line going down', across: 'a line going across', slant: 'a slanting line', slant2: 'a slanting line', wave: 'a wavy line', zigzag: 'a zig zag line', curve: 'a curve, like a rainbow', loop: 'a loopy line', circle: 'a circle', oval: 'an oval', square: 'a square', triangle: 'a triangle', diamond: 'a diamond', star: 'a star', heart: 'a heart' };
+// Measures a guide path (in its 0–100 box) so the demo pen can follow it.
+const pathCache = {};
+function pathEl(d) {
+  if (pathCache[d]) return pathCache[d];
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
+  const el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  el.setAttribute('d', d);
+  svg.appendChild(el);
+  document.body.appendChild(svg);
+  pathCache[d] = el;
+  return el;
+}
+const ACCENT = '#f97316';
+
 const INK = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 const PASS = 0.7;
 
@@ -46,6 +61,9 @@ export default function TraceCanvas({ step, onDone }) {
   const [cover, setCover] = useState(0);
   const [nudge, setNudge] = useState('');
   const [done, setDone] = useState(false);
+  const [demo, setDemo] = useState(true);
+  const demoCv = useRef(null);
+  const demoRun = useRef(0);
   const drawing = useRef(null);
   const color = useRef(0);
   const stats = useRef({ inside: 0, total: 0 });
@@ -95,6 +113,17 @@ export default function TraceCanvas({ step, onDone }) {
             ctx.arc(+m[1], +m[2], 4.5, 0, Math.PI * 2);
             ctx.fill();
           }
+        } else if (mode === 'demo') {
+          const el = pathEl(TRACE_PATHS[step.target]);
+          const len = el.getTotalLength();
+          ctx.strokeStyle = ACCENT;
+          ctx.lineWidth = (lineW * 0.5) / s;
+          ctx.setLineDash([len * extra, len + 10]);
+          ctx.stroke(p);
+          ctx.setLineDash([]);
+          const pt = el.getPointAtLength(len * extra);
+          ctx.font = `${26 / s}px serif`;
+          ctx.fillText('✏️', pt.x - 2 / s, pt.y - 22 / s);
         } else {
           ctx.strokeStyle = '#000';
           ctx.lineWidth = (lineW * 0.55 + extra) / s;
@@ -138,6 +167,23 @@ export default function TraceCanvas({ step, onDone }) {
         ctx.lineWidth = 2;
         ctx.strokeText(step.target, w / 2, y);
         ctx.setLineDash([]);
+      } else if (mode === 'demo') {
+        // The teacher's pen sweeps across the letters, drawing them as it goes.
+        const tw2 = ctx.measureText(step.target).width;
+        const x0 = w / 2 - tw2 / 2 - 10;
+        const edge = x0 + (tw2 + 20) * extra;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, edge, h);
+        ctx.clip();
+        ctx.strokeStyle = ACCENT;
+        ctx.lineWidth = Math.max(4, fs / 22);
+        ctx.strokeText(step.target, w / 2, y);
+        ctx.restore();
+        if (extra < 1) {
+          ctx.font = `${Math.max(28, fs / 6)}px serif`;
+          ctx.fillText('✏️', edge, y - fs * 0.3 + Math.sin(extra * 40) * fs * 0.15);
+        }
       } else {
         ctx.fillStyle = '#000';
         ctx.strokeStyle = '#000';
@@ -152,7 +198,7 @@ export default function TraceCanvas({ step, onDone }) {
   const reset = useCallback(() => {
     const { w, h } = size;
     const dpr = window.devicePixelRatio || 1;
-    [guide, ink].forEach((r) => {
+    [guide, ink, demoCv].forEach((r) => {
       r.current.width = w * dpr;
       r.current.height = h * dpr;
       r.current.style.width = `${w}px`;
@@ -193,16 +239,43 @@ export default function TraceCanvas({ step, onDone }) {
   useEffect(() => {
     let alive = true;
     const fonts = step.kind === 'cursive' ? '700 40px "Dancing Script"' : '500 40px Fredoka';
-    (document.fonts?.load ? document.fonts.load(fonts) : Promise.resolve()).finally(() => alive && reset());
+    (document.fonts?.load ? document.fonts.load(fonts) : Promise.resolve()).finally(() => alive && (reset(), runDemo()));
     return () => {
       alive = false;
+      demoRun.current++;
     };
-  }, [reset, step.kind]);
+  }, [reset, step.kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    const t = setTimeout(() => say(sayFor(step)), 300);
-    return () => clearTimeout(t);
-  }, [step]);
+  /** "Watch me": the teacher's pen traces the guide once, then it's the child's turn. */
+  const runDemo = async () => {
+    const run = ++demoRun.current;
+    setDemo(true);
+    const ctx = demoCv.current?.getContext('2d');
+    if (!ctx) return setDemo(false);
+    const speech = say(`Watch me. ${sayFor(step)}`);
+    const dur = 2600;
+    const t0 = performance.now();
+    await new Promise((resolve) => {
+      const frame = (t) => {
+        if (run !== demoRun.current) return resolve();
+        const p = Math.min(1, (t - t0) / dur);
+        ctx.clearRect(0, 0, size.w, size.h);
+        paintGuide(ctx, 'demo', p);
+        if (p < 1) requestAnimationFrame(frame);
+        else resolve();
+      };
+      requestAnimationFrame(frame);
+    });
+    await Promise.race([speech, new Promise((r) => setTimeout(r, 1500))]);
+    if (run !== demoRun.current) return;
+    endDemo(true);
+  };
+  const endDemo = (announce) => {
+    demoRun.current++;
+    demoCv.current?.getContext('2d').clearRect(0, 0, size.w, size.h);
+    setDemo(false);
+    if (announce) say(step.kind === 'path' ? 'Your turn! Start at the green dot and follow the dots.' : 'Your turn! Follow the dotted lines.');
+  };
 
   const measure = () => {
     const { w, h } = size;
@@ -257,6 +330,7 @@ export default function TraceCanvas({ step, onDone }) {
     }
   };
   const down = (e) => {
+    if (demo) return endDemo(true);
     if (done) return;
     e.preventDefault();
     ink.current.setPointerCapture?.(e.pointerId);
@@ -282,19 +356,23 @@ export default function TraceCanvas({ step, onDone }) {
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center gap-3">
         <SpeakButton text={sayFor(step)} />
-        <h2 className="text-2xl font-semibold sm:text-3xl">
+        <h2 className="on-bg text-2xl font-semibold sm:text-3xl">
           Trace {step.kind === 'path' ? PATH_NAMES[step.target] : <span className={cls('text-brand-700', step.kind === 'cursive' && 'font-cursive text-4xl')}>{step.target}</span>}
         </h2>
       </div>
       <div ref={wrap} className="flex w-full justify-center">
         <div className="relative rounded-3xl border-4 border-white bg-white shadow-lift" style={{ width: size.w, height: size.h }}>
           <canvas ref={guide} className="absolute inset-0 rounded-3xl" />
+          <canvas ref={demoCv} className="pointer-events-none absolute inset-0 rounded-3xl" />
+          {demo && (
+            <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full bg-accent-500 px-4 py-1 text-sm font-bold text-white shadow-chunky-sm animate-pop">👀 Watch me first · tap to skip</div>
+          )}
           <canvas ref={ink} className="absolute inset-0 touch-none rounded-3xl" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} />
           {done && <div className="pointer-events-none absolute inset-0 grid place-items-center text-8xl animate-pop">🌟</div>}
         </div>
       </div>
       <div className="flex w-full max-w-md items-center gap-3">
-        <button onClick={reset} className="btn-white shrink-0 px-3" aria-label="Start again">
+        <button onClick={() => (reset(), runDemo())} className="btn-white shrink-0 px-3" aria-label="Watch again and start over">
           <RotateCcw size={20} />
         </button>
         <div className="h-5 flex-1 overflow-hidden rounded-full bg-white shadow-inner">

@@ -6,6 +6,8 @@ import { say, sayLetterSound } from '../lib/speech';
 import { sfx } from '../lib/sfx';
 import { cls, shuffle, rng, hash } from '../lib/format';
 import { Brill } from '../components/brand';
+import { playLocal } from '../lib/localAudio';
+import { Volume2 } from 'lucide-react';
 
 const TILE_COLORS = ['bg-rose-400', 'bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-violet-400', 'bg-pink-400'];
 
@@ -18,10 +20,18 @@ export function Choice({ step, onDone }) {
   const hasGroups = step.options.some((o) => o.group);
   const short = step.options.every((o) => (o.label || '').length <= 4);
 
+  // Ghanaian-language questions play the word itself (after the English question for non-listening steps).
+  useEffect(() => {
+    if (!step.localAudio) return;
+    const t = setTimeout(() => playLocal(step.localAudio.lang, step.localAudio.word), step.listen ? 300 : 1700);
+    return () => clearTimeout(t);
+  }, [step]);
+
   const pickOpt = (i) => {
     if (right != null || wrong.includes(i)) return;
     const o = step.options[i];
-    if (step.soundOptions) sayLetterSound(o.label);
+    if (o.local) playLocal(o.local.lang, o.local.word);
+    else if (step.soundOptions) sayLetterSound(o.label);
     else if (step.sayOptions || emojiOnly) say(o.label || '', { interrupt: true });
     if (i === step.answer) {
       setRight(i);
@@ -43,7 +53,12 @@ export function Choice({ step, onDone }) {
         </button>
       )}
       {showPassage && <p className="max-w-2xl rounded-2xl bg-white/90 p-4 text-lg leading-relaxed shadow-soft">{step.passage}</p>}
-      <Prompt text={step.prompt} say={step.say} />
+      <Prompt text={step.prompt} say={step.say || step.prompt} />
+      {step.localAudio && (
+        <button onClick={() => playLocal(step.localAudio.lang, step.localAudio.word)} className="flex items-center gap-2 rounded-3xl bg-amber-500 px-6 py-3 text-2xl font-bold text-white shadow-chunky transition active:translate-y-1 active:shadow-none">
+          <Volume2 size={28} /> {step.listen ? 'Listen again' : step.localAudio.word.w}
+        </button>
+      )}
       {step.blendWord && (
         <div className="flex gap-2">
           {step.blendWord.split('').map((l, i) => (
@@ -316,7 +331,7 @@ export function Spell({ step, onDone }) {
     <div className="flex flex-col items-center gap-6">
       <div className="flex items-center gap-3">
         <SpeakButton text={word} />
-        <h2 className="text-2xl font-semibold sm:text-3xl">Spell the word</h2>
+        <h2 className="on-bg text-2xl font-semibold sm:text-3xl">Spell the word</h2>
       </div>
       <div className="text-8xl animate-bob">{step.emoji}</div>
       <div className={cls('flex flex-wrap justify-center gap-2', shake && 'animate-shake')}>

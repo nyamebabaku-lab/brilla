@@ -1,13 +1,16 @@
 // Shared frame for kid screens: child theme, top bar, time tracking and screen-time limit.
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Volume2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Music, Volume2, VolumeX } from 'lucide-react';
 import { useDB } from '../../data/store';
 import { useChild, useTheme } from '../../lib/hooks';
 import { totalStars, minutesToday } from '../../lib/progress';
 import { GrownUpGate, OfflineBadge } from '../../components/common';
 import { Brill } from '../../components/brand';
 import { todayKey } from '../../lib/format';
+import { setInstructor } from '../../lib/speech';
+import { useChildAccess } from '../../lib/access';
+import RenewWall from './RenewWall';
 
 export function useKid(childId) {
   const child = useChild(childId);
@@ -28,6 +31,12 @@ export default function KidLayout({ child, back, title, children, hideBar }) {
   const addTime = useDB((s) => s.addTime);
   const owner = useDB((s) => s.users.find((u) => u.id === child?.ownerId));
   const [gate, setGate] = useState(false);
+  const { expired } = useChildAccess(child);
+  const isStudent = useDB((s) => !!s.session.studentId);
+
+  useEffect(() => {
+    setInstructor(child?.instructor || 'female');
+  }, [child?.instructor]);
 
   useEffect(() => {
     if (!child) return;
@@ -66,6 +75,9 @@ export default function KidLayout({ child, back, title, children, hideBar }) {
               <Link to={`/kid/${child.id}/stickers`} className="flex h-12 items-center gap-1 rounded-2xl bg-amber-100 px-3 text-lg font-bold text-amber-700">
                 ⭐ {totalStars(prog)}
               </Link>
+              <button onClick={() => setPrefs({ music: prefs.music === false })} className={`grid h-12 w-12 place-items-center rounded-2xl ${prefs.music === false ? 'bg-slate-100 text-slate-400' : 'bg-brand-100 text-brand-700'}`} aria-label={prefs.music === false ? 'Turn music on' : 'Turn music off'}>
+                <Music className={prefs.music === false ? 'opacity-50' : ''} />
+              </button>
               <button onClick={() => setPrefs({ voice: !prefs.voice, sound: !prefs.voice })} className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-600" aria-label={prefs.voice ? 'Turn sound off' : 'Turn sound on'}>
                 {prefs.voice ? <Volume2 /> : <VolumeX />}
               </button>
@@ -75,7 +87,8 @@ export default function KidLayout({ child, back, title, children, hideBar }) {
       )}
       <main className="mx-auto max-w-6xl px-3 pb-24 pt-4 sm:px-4">{children}</main>
       <OfflineBadge />
-      {overLimit && (
+      {expired && <RenewWall child={child} isStudent={isStudent} />}
+      {!expired && overLimit && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-ink/60 p-4 backdrop-blur">
           <div className="card max-w-sm p-8 text-center animate-scale-in">
             <Brill size={90} mood="happy" className="mx-auto animate-bob" />

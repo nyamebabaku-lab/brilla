@@ -38,7 +38,7 @@ export default function KidHome() {
   const [paywall, setPaywall] = useState(false);
   const [gate, setGate] = useState(false);
 
-  const catalog = useMemo(() => (child ? catalogFor(child.levelId, { track: child.track, childName: child.name, settings }) : []), [child, settings]);
+  const catalog = useMemo(() => (child ? catalogFor(child.levelId, { track: child.track, childName: child.name, lang: child.localLang, settings }) : []), [child, settings]);
   const per = useMemo(() => subjectProgress(catalog, prog), [catalog, prog]);
   if (!child) return <KidLayout child={null} />;
 

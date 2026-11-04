@@ -9,6 +9,7 @@ const FAQ = [
   ['What is free?', 'The first lessons in every subject at every class level are free forever. Paid plans unlock everything.'],
   ['How do I pay?', 'MTN MoMo, Telecel Cash, AirtelTigo Money, or a Visa/Mastercard card. You approve the payment on your phone.'],
   ['Does it work without internet?', 'Yes. Install Brilla and lessons work offline. Your plan stays active offline until its end date.'],
+  ['What happens when my plan ends?', 'Nothing is charged automatically. On the end date the app locks (online or offline) until you pay for the next week, month or year. We remind you 3 days before.'],
   ['Can I switch plans?', 'Yes. Renewing the same plan adds time to it. Choosing a new plan starts it straight away.'],
 ];
 

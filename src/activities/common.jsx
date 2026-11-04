@@ -14,7 +14,7 @@ export function Prompt({ text, say: sayText }) {
   return (
     <div className="flex items-center justify-center gap-3">
       <SpeakButton text={sayText || text} />
-      <h2 className="text-balance text-center text-2xl font-semibold leading-snug sm:text-3xl">{text}</h2>
+      <h2 className="on-bg text-balance text-center text-2xl font-semibold leading-snug sm:text-3xl">{text}</h2>
     </div>
   );
 }

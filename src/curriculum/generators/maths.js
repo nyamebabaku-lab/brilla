@@ -27,7 +27,7 @@ const COLOURS = [
 const count = (max, min = 1) => (r) => {
   const n = int(r, min, max);
   const e = pickEmoji(r);
-  return choice('How many can you count?', numOptions(r, n, { count: 3, spread: 2, min: 1 }), { visual: { kind: 'emoji', items: Array(n).fill(e) } });
+  return choice('How many can you count?', numOptions(r, n, { count: 3, spread: 2, min: 1 }), { visual: { kind: 'emoji', items: Array(n).fill(e) }, explain: `Touch each one as you count: ${Array.from({ length: n }, (_, i) => i + 1).join(', ')}. There are ${n}.` });
 };
 const findNumber = (max) => (r) => {
   const n = int(r, 1, max);
@@ -64,7 +64,7 @@ const moreLess = (max) => (r) => {
 const beforeAfter = (max) => (r) => {
   const n = int(r, 2, max - 1);
   const after = r() < 0.5;
-  return choice(`What number comes ${after ? 'after' : 'before'} ${n}?`, numOptions(r, after ? n + 1 : n - 1, { count: 3, spread: 2 }));
+  return choice(`What number comes ${after ? 'after' : 'before'} ${n}?`, numOptions(r, after ? n + 1 : n - 1, { count: 3, spread: 2 }), { explain: `Count: ${n - 1}, ${n}, ${n + 1}. ${after ? `After ${n} comes ${n + 1}` : `Before ${n} comes ${n - 1}`}.` });
 };
 const pattern = (r) => {
   const [a, b, c] = sample(r, ['🔴', '🔵', '🟡', '🟢', '🟣', '⭐', '🍎', '🐟'], 3);
@@ -81,6 +81,7 @@ const addPics = (max) => (r) => {
   return choice(`${a} + ${b} = ?`, numOptions(r, a + b, { count: 3, spread: 2, min: 1 }), {
     visual: { kind: 'sum', a: Array(a).fill(e), b: Array(b).fill(e), op: '+' },
     say: `${a} plus ${b} makes how many?`,
+    explain: `Count the first group: ${a}. Keep counting the next group: ${Array.from({ length: b }, (_, i) => a + i + 1).join(', ')}. That makes ${a + b}.`,
   });
 };
 const subPics = (max) => (r) => {
@@ -90,27 +91,28 @@ const subPics = (max) => (r) => {
   return choice(`${a} − ${b} = ?`, numOptions(r, a - b, { count: 3, spread: 2, min: 0 }), {
     visual: { kind: 'takeaway', items: Array(a).fill(e), gone: b },
     say: `${a} take away ${b} leaves how many?`,
+    explain: `Start with ${a}, cross out ${b}, then count what is left: ${a - b}.`,
   });
 };
 const add = (max, min = 0) => (r) => {
   const a = int(r, min, max);
   const b = int(r, min, max);
-  return choice(`${a} + ${b} = ?`, numOptions(r, a + b, { spread: Math.max(2, Math.ceil(max / 8)) }), { say: `What is ${a} plus ${b}?` });
+  return choice(`${a} + ${b} = ?`, numOptions(r, a + b, { spread: Math.max(2, Math.ceil(max / 8)) }), { say: `What is ${a} plus ${b}?`, explain: a + b <= 20 ? `Start at the bigger number, ${Math.max(a, b)}, and count on ${Math.min(a, b)} more. ${a} + ${b} = ${a + b}.` : `Add the ones, then the tens. ${a} + ${b} = ${a + b}.` });
 };
 const sub = (max, min = 0) => (r) => {
   let a = int(r, min, max);
   let b = int(r, min, max);
   if (b > a) [a, b] = [b, a];
-  return choice(`${a} − ${b} = ?`, numOptions(r, a - b, { spread: Math.max(2, Math.ceil(max / 8)) }), { say: `What is ${a} minus ${b}?` });
+  return choice(`${a} − ${b} = ?`, numOptions(r, a - b, { spread: Math.max(2, Math.ceil(max / 8)) }), { say: `What is ${a} minus ${b}?`, explain: a <= 20 ? `Start at ${a} and count back ${b}. ${a} − ${b} = ${a - b}.` : `Take away the ones, then the tens. ${a} − ${b} = ${a - b}.` });
 };
 const bond = (total) => (r) => {
   const a = int(r, 0, total);
-  return choice(`${a} + ? = ${total}`, numOptions(r, total - a, { count: 4, spread: 2 }), { say: `${a} and what make ${total}?` });
+  return choice(`${a} + ? = ${total}`, numOptions(r, total - a, { count: 4, spread: 2 }), { say: `${a} and what make ${total}?`, explain: `Count on from ${a} up to ${total}: that is ${total - a} more.` });
 };
 const mul = (tables, maxB = 12) => (r) => {
   const a = pick(r, tables);
   const b = int(r, 1, maxB);
-  return choice(`${a} × ${b} = ?`, numOptions(r, a * b, { spread: 3, min: 0, count: 4 }), { say: `What is ${a} times ${b}?` });
+  return choice(`${a} × ${b} = ?`, numOptions(r, a * b, { spread: 3, min: 0, count: 4 }), { say: `What is ${a} times ${b}?`, explain: `${a} × ${b} means ${b} groups of ${a}. Count in ${a}s: ${Array.from({ length: Math.min(b, 6) }, (_, i) => a * (i + 1)).join(', ')}${b > 6 ? '…' : ''} = ${a * b}.` });
 };
 const groups = (r) => {
   const g = int(r, 2, 4);
@@ -121,7 +123,7 @@ const groups = (r) => {
 const div = (tables, maxB = 12) => (r) => {
   const a = pick(r, tables);
   const b = int(r, 1, maxB);
-  return choice(`${a * b} ÷ ${a} = ?`, numOptions(r, b, { spread: 2, min: 1 }), { say: `What is ${a * b} divided by ${a}?` });
+  return choice(`${a * b} ÷ ${a} = ?`, numOptions(r, b, { spread: 2, min: 1 }), { say: `What is ${a * b} divided by ${a}?`, explain: `How many ${a}s make ${a * b}? ${a} × ${b} = ${a * b}, so the answer is ${b}.` });
 };
 const share = (t) => (r) => {
   const kids = int(r, 2, 4);
@@ -139,7 +141,7 @@ const placeValue = (digits) => (r) => {
 };
 const tensOnes = (r) => {
   const n = int(r, 11, 99);
-  return choice(`How many tens are in ${n}?`, numOptions(r, Math.floor(n / 10), { spread: 2, min: 0 }), { visual: { kind: 'blocks', tens: Math.floor(n / 10), ones: n % 10 } });
+  return choice(`How many tens are in ${n}?`, numOptions(r, Math.floor(n / 10), { spread: 2, min: 0 }), { visual: { kind: 'blocks', tens: Math.floor(n / 10), ones: n % 10 }, explain: `${n} is ${Math.floor(n / 10)} tens and ${n % 10} ones. The first digit tells the tens.` });
 };
 const missing = (max) => (r) => {
   const step = pick(r, [1, 2, 5, 10].filter((s) => s * 5 <= max));
@@ -156,7 +158,7 @@ const skip = (by, max) => (r) => {
 };
 const evenOdd = (r) => {
   const n = int(r, 1, 50);
-  return choice(`Is ${n} even or odd?`, { options: [{ label: 'even' }, { label: 'odd' }], answer: n % 2 === 0 ? 0 : 1 });
+  return choice(`Is ${n} even or odd?`, { options: [{ label: 'even' }, { label: 'odd' }], answer: n % 2 === 0 ? 0 : 1 }, { explain: `Look at the last digit, ${n % 10}. Numbers ending in 0, 2, 4, 6 or 8 are even.` });
 };
 const compare = (max) => (r) => {
   const a = int(r, 0, max);
@@ -177,7 +179,7 @@ const clock = (mins) => (r) => {
   const fmt = (hh, mm) => (mm === 0 ? `${hh} o'clock` : mm === 30 ? `half past ${hh}` : mm === 15 ? `quarter past ${hh}` : mm === 45 ? `quarter to ${(hh % 12) + 1}` : `${hh}:${String(mm).padStart(2, '0')}`);
   const right = fmt(h, m);
   const wrong = [fmt((h % 12) + 1, m), fmt(h, pick(r, mins.filter((x) => x !== m)) ?? (m + 30) % 60), fmt(((h + 4) % 12) + 1, m), fmt(h === 1 ? 12 : h - 1, m)];
-  return choice('What time does the clock show?', textOptions(r, right, [...new Set(wrong)].filter((w) => w !== right), 3), { visual: { kind: 'clock', h, m } });
+  return choice('What time does the clock show?', textOptions(r, right, [...new Set(wrong)].filter((w) => w !== right), 3), { visual: { kind: 'clock', h, m }, explain: `The short hand shows the hour (${h}). The long hand shows the minutes (${m === 0 ? 'pointing at 12 means o\'clock' : `${m} minutes`}). It is ${right}.` });
 };
 const coins = (t) => (r) => {
   const items = t.id === 'ges' ? [1, 2, 5, 10, 20] : [1, 2, 5, 10, 20];
@@ -215,13 +217,13 @@ const fracShape = (dens) => (r) => {
   const n = int(r, 1, d - 1);
   const right = `${n}/${d}`;
   const wrong = [`${d - n}/${d}`, `${n}/${d + 1}`, `${d}/${n}`, `${n + 1}/${d}`].filter((w) => w !== right && !w.startsWith('0'));
-  return choice('What fraction is coloured?', textOptions(r, right, [...new Set(wrong)], 3), { visual: { kind: 'fraction', n, d, shape: r() < 0.5 ? 'pie' : 'bar' } });
+  return choice('What fraction is coloured?', textOptions(r, right, [...new Set(wrong)], 3), { visual: { kind: 'fraction', n, d, shape: r() < 0.5 ? 'pie' : 'bar' }, explain: `There are ${d} equal parts (the bottom number) and ${n} ${n === 1 ? 'is' : 'are'} coloured (the top number): ${n}/${d}.` });
 };
 const fracOf = (r) => {
   const d = pick(r, [2, 3, 4, 5, 10]);
   const n = int(r, 1, d - 1);
   const whole = d * int(r, 2, 10);
-  return choice(`What is ${n}/${d} of ${whole}?`, numOptions(r, (whole / d) * n, { spread: 3, min: 1 }));
+  return choice(`What is ${n}/${d} of ${whole}?`, numOptions(r, (whole / d) * n, { spread: 3, min: 1 }), { explain: `Divide by the bottom number, then multiply by the top: ${whole} ÷ ${d} = ${whole / d}, × ${n} = ${(whole / d) * n}.` });
 };
 const fracEquiv = (r) => {
   const d = pick(r, [2, 3, 4, 5]);
@@ -260,7 +262,7 @@ const decTenths = (r) => {
 const pct = (easy) => (r) => {
   const p = pick(r, easy ? [10, 25, 50, 100] : [5, 10, 15, 20, 25, 30, 40, 50, 75]);
   const whole = pick(r, [20, 40, 60, 80, 100, 120, 200, 400]);
-  return choice(`What is ${p}% of ${whole}?`, numOptions(r, (p * whole) / 100, { spread: 5, min: 0 }));
+  return choice(`What is ${p}% of ${whole}?`, numOptions(r, (p * whole) / 100, { spread: 5, min: 0 }), { explain: `${p}% means ${p} out of 100. ${whole} ÷ 100 × ${p} = ${(p * whole) / 100}.` });
 };
 const ratio = (t) => (r) => {
   const a = int(r, 1, 5);
@@ -294,12 +296,12 @@ const negatives = (r) => {
 const perimeter = (r) => {
   const w = int(r, 2, 12);
   const h = int(r, 2, 12);
-  return choice(`A rectangle is ${w} cm long and ${h} cm wide. What is its perimeter?`, numOptions(r, 2 * (w + h), { spread: 4, fmt: (n) => `${n} cm` }), { visual: { kind: 'rect', w, h } });
+  return choice(`A rectangle is ${w} cm long and ${h} cm wide. What is its perimeter?`, numOptions(r, 2 * (w + h), { spread: 4, fmt: (n) => `${n} cm` }), { visual: { kind: 'rect', w, h }, explain: `Perimeter is the distance all the way round: ${w} + ${h} + ${w} + ${h} = ${2 * (w + h)} cm.` });
 };
 const area = (r) => {
   const w = int(r, 2, 12);
   const h = int(r, 2, 12);
-  return choice(`A rectangle is ${w} m long and ${h} m wide. What is its area?`, numOptions(r, w * h, { spread: 5, fmt: (n) => `${n} m²` }), { visual: { kind: 'rect', w, h } });
+  return choice(`A rectangle is ${w} m long and ${h} m wide. What is its area?`, numOptions(r, w * h, { spread: 5, fmt: (n) => `${n} m²` }), { visual: { kind: 'rect', w, h }, explain: `Area = length × width = ${w} × ${h} = ${w * h} m².` });
 };
 const volume = (r) => {
   const [a, b, c] = [int(r, 2, 6), int(r, 2, 6), int(r, 2, 6)];
@@ -312,7 +314,7 @@ const angles = (r) => {
 };
 const sides = (r) => {
   const s = pick(r, ['triangle', 'square', 'rectangle', 'pentagon', 'hexagon']);
-  return choice(`How many sides does a ${s} have?`, numOptions(r, SHAPE_SIDES[s], { count: 3, spread: 2, min: 3 }), { visual: { kind: 'shape', shape: s } });
+  return choice(`How many sides does a ${s} have?`, numOptions(r, SHAPE_SIDES[s], { count: 3, spread: 2, min: 3 }), { visual: { kind: 'shape', shape: s }, explain: `Count each straight side as you go round: a ${s} has ${SHAPE_SIDES[s]} sides.` });
 };
 const shapes3d = (r) => {
   const s = pick(r, SHAPES_3D);
@@ -321,7 +323,7 @@ const shapes3d = (r) => {
 const rounding = (to) => (r) => {
   const n = int(r, to, to * 99);
   const ans = Math.round(n / to) * to;
-  return choice(`Round ${n.toLocaleString()} to the nearest ${to}`, numOptions(r, ans, { spread: 2, fmt: (v) => v.toLocaleString() }));
+  return choice(`Round ${n.toLocaleString()} to the nearest ${to}`, numOptions(r, ans, { spread: 2, fmt: (v) => v.toLocaleString() }), { explain: `Look at the digit after the ${to}s place: 5 or more rounds up, 4 or less rounds down. ${n.toLocaleString()} → ${ans.toLocaleString()}.` });
 };
 const factors = (r) => {
   const n = pick(r, [12, 16, 18, 20, 24, 30, 36]);

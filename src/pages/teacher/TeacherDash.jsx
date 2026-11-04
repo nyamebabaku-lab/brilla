@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart3, ClipboardList, Copy, CreditCard, Pencil, Play, Plus, School, Trash2 } from 'lucide-react';
 import DashShell from '../../components/DashShell';
+import PlanBanner from '../../components/PlanBanner';
 import ChildForm from '../../components/ChildForm';
 import { Empty, Field, Modal, Stat, toast } from '../../components/ui';
 import { useDB } from '../../data/store';
@@ -10,7 +11,7 @@ import { DEFAULT_THEME } from '../../lib/theme';
 import { activeSub } from '../../lib/access';
 import { periodOf } from '../../lib/payments';
 import { LEVELS, levelName } from '../../curriculum/levels';
-import { catalogFor } from '../../curriculum';
+import { catalogFor, UNIT_SIZE } from '../../curriculum';
 import { lessonsDone, totalStars } from '../../lib/progress';
 import { cls, fmtDate, money } from '../../lib/format';
 
@@ -28,6 +29,7 @@ export default function TeacherDash() {
   ];
   return (
     <DashShell title={`${user.name} 🧑‍🏫`} subtitle={user.schoolName} tabs={tabs} tab={tab} setTab={setTab}>
+      <PlanBanner user={user} />
       {tab === 'classes' && <ClassesTab user={user} autoNew={!!params.get('new')} />}
       {tab === 'assign' && <AssignTab user={user} />}
       {tab === 'progress' && <ClassProgress user={user} />}
@@ -196,7 +198,7 @@ function AssignTab({ user }) {
           </select>
         </Field>
         <Field label="Subject">
-          <select className="input" value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value, lessonId: '' })}>
+          <select className="input" value={f.subjectId} onChange={(e) => setF({ ...f, subjectId: e.target.value, lessonId: '', unit: 0 })}>
             <option value="">Choose…</option>
             {catalog.map((g) => (
               <option key={g.subject.id} value={g.subject.id}>
@@ -205,10 +207,19 @@ function AssignTab({ user }) {
             ))}
           </select>
         </Field>
+        <Field label="Unit">
+          <select className="input" value={f.unit || 0} onChange={(e) => setF({ ...f, unit: Number(e.target.value), lessonId: '' })} disabled={!f.subjectId}>
+            {Array.from({ length: Math.ceil(subjectLessons.length / UNIT_SIZE) }, (_, u) => (
+              <option key={u} value={u}>
+                Unit {u + 1} (lessons {u * UNIT_SIZE + 1}–{Math.min(subjectLessons.length, (u + 1) * UNIT_SIZE)})
+              </option>
+            ))}
+          </select>
+        </Field>
         <Field label="Lesson">
           <select className="input" value={f.lessonId} onChange={(e) => setF({ ...f, lessonId: e.target.value })} disabled={!f.subjectId}>
             <option value="">Choose…</option>
-            {subjectLessons.map((l) => (
+            {subjectLessons.slice((f.unit || 0) * UNIT_SIZE, ((f.unit || 0) + 1) * UNIT_SIZE).map((l) => (
               <option key={l.id} value={l.id}>
                 {l.order + 1}. {l.title}
               </option>

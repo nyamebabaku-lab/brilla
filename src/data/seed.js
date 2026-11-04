@@ -1,5 +1,6 @@
 // Demo data so every role has something to look at on first open.
 import { DEFAULT_PRESETS, DEFAULT_THEME } from '../lib/theme';
+import { DEFAULT_LANGUAGES } from '../curriculum/languagePacks';
 import { addDays, rng, int, pick, todayKey } from '../lib/format';
 
 export const AVATARS = ['🦁', '🐯', '🐼', '🐨', '🐸', '🦊', '🐰', '🐵', '🦄', '🐲', '🐙', '🦋', '🐬', '🦖', '🐧', '🐱', '🐶', '🦉'];
@@ -25,6 +26,8 @@ export const DEFAULT_SETTINGS = {
   presets: DEFAULT_PRESETS,
   defaultTheme: DEFAULT_THEME,
   lessonOverrides: {},
+  languages: DEFAULT_LANGUAGES,
+  ttsFallback: true,
   customLessons: [
     {
       id: 'custom_ghana1',
@@ -50,6 +53,7 @@ export function buildSeed() {
     { id: 'u_admin', role: 'admin', name: 'Brilla Admin', email: 'admin@brilla.app', phone: '0240000001', password: 'demo123', createdAt: iso(200) },
     { id: 'u_parent', role: 'parent', plan: 'family', name: 'Adwoa Mensah', email: 'parent@brilla.app', phone: '0244123456', password: 'demo123', pin: '1234', createdAt: iso(60) },
     { id: 'u_single', role: 'parent', plan: 'single', name: 'Kwesi Boateng', email: 'single@brilla.app', phone: '0201234567', password: 'demo123', pin: '1234', createdAt: iso(3) },
+    { id: 'u_expired', role: 'parent', plan: 'family', name: 'Efua Ansah', email: 'expired@brilla.app', phone: '0277123456', password: 'demo123', pin: '1234', createdAt: iso(40) },
     { id: 'u_teacher', role: 'teacher', plan: 'school', name: 'Mrs. Agyeman', schoolName: 'Sunrise Academy', email: 'teacher@brilla.app', phone: '0559876543', password: 'demo123', pin: '1234', createdAt: iso(90) },
   ];
   const kid = (id, ownerId, name, age, levelId, avatar, extra = {}) => ({ id, ownerId, name, age, levelId, track: 'ges', avatar, theme: DEFAULT_THEME, screenLimit: 0, createdAt: iso(50), ...extra });
@@ -58,6 +62,7 @@ export function buildSeed() {
     kid('c_kofi', 'u_parent', 'Kofi', 8, 'p3', '🦖', { theme: { preset: 'space', brand: '#6366f1', accent: '#facc15', bg: 'space' }, screenLimit: 60 }),
     kid('c_esi', 'u_parent', 'Esi', 3, 'n1', '🐰'),
     kid('c_yaw', 'u_single', 'Yaw', 6, 'p1', '🦁', { track: 'intl' }),
+    kid('c_nana', 'u_expired', 'Nana', 7, 'p2', '🐼', { instructor: 'male' }),
   ];
   const classes = [
     { id: 'cl_gold', teacherId: 'u_teacher', name: 'P2 Gold', levelId: 'p2', code: 'GOLD42', createdAt: iso(80) },
@@ -76,11 +81,13 @@ export function buildSeed() {
   // Subscriptions + payment history (extra customers give the admin dashboard real-looking numbers).
   const subscriptions = [
     { id: 's_parent', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 60, status: 'active', autoRenew: true, startedAt: iso(12), expiresAt: addDays(iso(12), 30) },
+    { id: 's_expired', userId: 'u_expired', plan: 'family', period: 'monthly', seats: 1, amount: 60, status: 'active', autoRenew: true, startedAt: iso(31), expiresAt: addDays(iso(31), 30) },
     { id: 's_teacher', userId: 'u_teacher', plan: 'school', period: 'yearly', seats: 30, amount: 4500, status: 'active', autoRenew: true, startedAt: iso(85), expiresAt: addDays(iso(85), 365) },
   ];
   const payments = [
     { id: 'p_1', ref: 'BRL204611A', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 60, method: 'mtn', account: '0244123456', status: 'success', at: iso(42) },
     { id: 'p_2', ref: 'BRL318872C', userId: 'u_parent', plan: 'family', period: 'monthly', seats: 1, amount: 60, method: 'mtn', account: '0244123456', status: 'success', at: iso(12) },
+    { id: 'p_e1', ref: 'BRL771204Q', userId: 'u_expired', plan: 'family', period: 'monthly', seats: 1, amount: 60, method: 'telecel', account: '0277123456', status: 'success', at: iso(31) },
     { id: 'p_3', ref: 'BRL551023K', userId: 'u_teacher', plan: 'school', period: 'yearly', seats: 30, amount: 4500, method: 'card', account: '**** 4242', status: 'success', at: iso(85) },
   ];
   const firstNames = ['Akua', 'Kweku', 'Afia', 'Yaa', 'Kofi', 'Mavis', 'Elikem', 'Sena', 'Ato', 'Naa', 'Joyce', 'Daniel', 'Grace', 'Samuel', 'Linda', 'Isaac'];

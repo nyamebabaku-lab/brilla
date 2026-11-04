@@ -8,6 +8,7 @@ import { say } from '../lib/speech';
 import { sfx } from '../lib/sfx';
 import { cls } from '../lib/format';
 
+const COLOUR_NAMES = { '#ef4444': 'red', '#f97316': 'orange', '#facc15': 'yellow', '#a3e635': 'light green', '#22c55e': 'green', '#14b8a6': 'teal', '#38bdf8': 'light blue', '#3b82f6': 'blue', '#8b5cf6': 'purple', '#ec4899': 'pink', '#f9a8d4': 'light pink', '#92400e': 'brown', '#fde68a': 'cream', '#1f2937': 'black', '#ffffff': 'white', '#9ca3af': 'grey' };
 const PALETTE = ['#ef4444', '#f97316', '#facc15', '#a3e635', '#22c55e', '#14b8a6', '#38bdf8', '#3b82f6', '#8b5cf6', '#ec4899', '#f9a8d4', '#92400e', '#fde68a', '#1f2937', '#ffffff', '#9ca3af'];
 
 function Region({ s, fill, onTap }) {
@@ -25,20 +26,32 @@ export default function ColorPicture({ step, onDone, onSave }) {
   const [color, setColor] = useState(PALETTE[0]);
   const [fills, setFills] = useState({});
   const [history, setHistory] = useState([]);
+  const [mistakes, setMistakes] = useState(0);
+  const targets = step.targets || null;
   const filled = Object.keys(fills).length;
   const total = art.r.length;
-  const enough = filled >= Math.min(total, Math.max(3, Math.ceil(total * 0.5)));
+  const targetsDone = targets ? targets.filter((tg) => fills[tg.idx] === tg.hex).length : 0;
+  const enough = targets ? targetsDone === targets.length : filled >= Math.min(total, Math.max(3, Math.ceil(total * 0.5)));
 
   useEffect(() => {
-    const t = setTimeout(() => say(`Let's colour the ${meta?.name || 'picture'}! Pick a colour, then tap the picture.`), 300);
+    const t = setTimeout(() => say(step.targets ? step.say : `Let's colour the ${meta?.name || 'picture'}! Pick a colour, then tap the picture.`), 300);
     return () => clearTimeout(t);
   }, [meta]);
 
   const tap = (i) => (e) => {
     e.preventDefault();
     setHistory((h) => [...h, fills]);
-    setFills((f) => ({ ...f, [i]: color === 'magic' ? PALETTE[Math.floor(Math.random() * 12)] : color }));
+    const c = color === 'magic' ? PALETTE[Math.floor(Math.random() * 12)] : color;
+    setFills((f) => ({ ...f, [i]: c }));
     sfx('fill');
+    const tg = targets?.find((x) => x.idx === i);
+    if (tg) {
+      if (c === tg.hex) say(`Yes! The ${tg.name} is ${tg.colour}.`);
+      else {
+        setMistakes((m) => m + 1);
+        say(`That is ${COLOUR_NAMES[c] || 'a different colour'}. The ${tg.name} should be ${tg.colour}.`);
+      }
+    }
   };
 
 
@@ -59,17 +72,30 @@ export default function ColorPicture({ step, onDone, onSave }) {
     }
     sfx('star');
     say('Beautiful colours!');
-    onDone({ creative: true });
+    onDone(targets ? { mistakes: Math.min(mistakes, 3), questions: 3 } : { creative: true });
   };
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center gap-3">
         <SpeakButton text={`Colour the ${meta?.name}`} />
-        <h2 className="text-2xl font-semibold sm:text-3xl">
+        <h2 className="on-bg text-2xl font-semibold sm:text-3xl">
           {meta?.emoji} Colour the {meta?.name?.toLowerCase()}
         </h2>
       </div>
+      {targets && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {targets.map((tg) => {
+            const ok = fills[tg.idx] === tg.hex;
+            return (
+              <button key={tg.idx} onClick={() => say(`Colour the ${tg.name} ${tg.colour}`)} className={cls('flex items-center gap-2 rounded-2xl border-4 px-3 py-1.5 font-semibold', ok ? 'border-emerald-400 bg-emerald-50' : 'border-white bg-white')}>
+                <span className="h-6 w-6 rounded-full border-2 border-ink" style={{ background: tg.hex }} />
+                the {tg.name} <b>{tg.colour}</b> {ok && '✅'}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="flex w-full flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center">
         <div className="w-full max-w-[min(92vw,30rem)] rounded-3xl border-4 border-white bg-white p-2 shadow-lift" style={{ maxWidth: 'min(92vw, 30rem, calc(100dvh - 300px))' }}>
           <svg id="colour-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" className="block h-auto w-full touch-none select-none">
@@ -102,7 +128,7 @@ export default function ColorPicture({ step, onDone, onSave }) {
         </div>
       </div>
       <NextButton onClick={finish} disabled={!enough}>
-        {enough ? "I'm finished!" : `Colour ${Math.max(0, Math.min(total, Math.max(3, Math.ceil(total * 0.5))) - filled)} more`}
+        {enough ? "I'm finished!" : targets ? `${targets.length - targetsDone} to go` : `Colour ${Math.max(0, Math.min(total, Math.max(3, Math.ceil(total * 0.5))) - filled)} more`}
       </NextButton>
     </div>
   );

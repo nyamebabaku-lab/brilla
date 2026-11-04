@@ -33,7 +33,7 @@ export const useDB = create(
     (set) => ({
       ...buildSeed(),
       session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 },
-      prefs: { sound: true, voice: true },
+      prefs: { sound: true, voice: true, music: true, musicVolume: 0.5 },
 
       // ---- generic collection helpers ----
       add: (col, item) => {
@@ -83,9 +83,15 @@ export const useDB = create(
     }),
     {
       name: 'brilla-db',
-      version: 1,
+      version: 2,
+      // v2: add demo records introduced later (e.g. the expired-plan family) without touching the user's own data.
+      migrate: (state) => {
+        const seed = buildSeed();
+        const addMissing = (col) => [...(state[col] || []), ...seed[col].filter((x) => !(state[col] || []).some((y) => y.id === x.id))];
+        return { ...state, users: addMissing('users'), children: addMissing('children'), subscriptions: addMissing('subscriptions'), payments: addMissing('payments') };
+      },
       storage: safeStorage,
-      merge: (persisted, current) => ({ ...current, ...persisted, settings: { ...DEFAULT_SETTINGS, ...(persisted?.settings || {}) } }),
+      merge: (persisted, current) => ({ ...current, ...persisted, prefs: { ...current.prefs, ...(persisted?.prefs || {}) }, settings: { ...DEFAULT_SETTINGS, ...(persisted?.settings || {}) } }),
     },
   ),
 );

@@ -8,7 +8,8 @@ import { useDB } from './data/store';
 import { usePrefsSync } from './lib/hooks';
 import Landing from './pages/public/Landing';
 import AppWelcome from './pages/public/AppWelcome';
-import { IS_APP } from './lib/platform';
+import { IS_ADMIN_APP, IS_APP } from './lib/platform';
+import AdminAppStart from './pages/public/AdminAppStart';
 import { Login, Signup, ClassLogin } from './pages/public/Auth';
 import Pricing from './pages/public/Pricing';
 import Checkout from './pages/public/Checkout';
@@ -38,7 +39,7 @@ function RequireRole({ roles, children }) {
   // School accounts can be switched off by Admin: pupils and teachers then see a short notice.
   if (!schoolsOn && (session.studentId || user?.role === 'teacher')) return <SchoolsPaused />;
   if (session.studentId && roles.includes('student')) return children;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={IS_ADMIN_APP ? '/' : '/login'} replace />;
   if (!roles.includes(user.role)) return <Navigate to="/home" replace />;
   return children;
 }
@@ -70,8 +71,8 @@ export default function App() {
       <div className="relative z-[1]">
         <Suspense fallback={<Loading />}>
           <Routes>
-            <Route path="/" element={IS_APP ? <AppWelcome /> : <Landing />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={IS_ADMIN_APP ? <AdminAppStart /> : IS_APP ? <AppWelcome /> : <Landing />} />
+            <Route path="/login" element={IS_ADMIN_APP ? <Navigate to="/" replace /> : <Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/class" element={<ClassLogin />} />
             <Route path="/pricing" element={<Pricing />} />
@@ -85,7 +86,7 @@ export default function App() {
             <Route path="/parent/*" element={<RequireRole roles={['parent']}><ParentDash /></RequireRole>} />
             <Route path="/teacher/*" element={<RequireRole roles={['teacher']}><TeacherDash /></RequireRole>} />
             {/* Admin lives on the website only. */}
-            <Route path="/admin/*" element={IS_APP ? <Navigate to="/" replace /> : <RequireRole roles={['admin']}><AdminDash /></RequireRole>} />
+            <Route path="/admin/*" element={IS_APP && !IS_ADMIN_APP ? <Navigate to="/" replace /> : <RequireRole roles={['admin']}><AdminDash /></RequireRole>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

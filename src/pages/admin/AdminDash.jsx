@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { BookOpen, CreditCard, Eye, EyeOff, Languages, LayoutDashboard, Mic, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
 import LanguagesAdmin from './LanguagesAdmin';
 import VoiceStudio from './VoiceStudio';
+import { IS_ADMIN_APP, IS_APP } from '../../lib/platform';
+import { saveFile } from '../../lib/files';
 import DashShell from '../../components/DashShell';
 import { Bars } from '../../components/Charts';
 import { Field, Modal, Stat, Toggle, toast } from '../../components/ui';
@@ -17,13 +19,14 @@ import { BACKGROUNDS, BG_NAMES, themeFromPreset } from '../../lib/theme';
 import { addDays, cls, fmtDate, money, nowISO, uid } from '../../lib/format';
 
 export default function AdminDash() {
-  const [tab, setTab] = useState('overview');
+  // The admin phone app is mostly used for recording voices, so it opens on the Voice studio.
+  const [tab, setTab] = useState(IS_ADMIN_APP ? 'voice' : 'overview');
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} /> },
+    { id: 'voice', label: 'Voice studio', icon: <Mic size={16} /> },
     { id: 'plans', label: 'Plans & prices', icon: <Tag size={16} /> },
     { id: 'lessons', label: 'Lessons', icon: <BookOpen size={16} /> },
     { id: 'languages', label: 'Twi & Ga', icon: <Languages size={16} /> },
-    { id: 'voice', label: 'Voice studio', icon: <Mic size={16} /> },
     { id: 'subscribers', label: 'Subscribers', icon: <Users size={16} /> },
     { id: 'payments', label: 'Payments', icon: <CreditCard size={16} /> },
     { id: 'themes', label: 'Themes', icon: <Palette size={16} /> },
@@ -429,10 +432,7 @@ function Payments() {
   const csv = () => {
     const lines = [['Date', 'Ref', 'Customer', 'Plan', 'Period', 'Seats', 'Method', 'Amount', 'Status'], ...rows.map((p) => [p.at, p.ref, users.find((u) => u.id === p.userId)?.name || '', p.plan, p.period, p.seats, methodLabel(p.method), p.amount, p.status])];
     const blob = new Blob([lines.map((l) => l.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'brilla-payments.csv';
-    a.click();
+    saveFile('brilla-payments.csv', blob);
   };
   return (
     <div className="space-y-3">
@@ -556,6 +556,7 @@ function Themes() {
             <Plus size={16} /> Add theme
           </button>
         </form>
+        {!IS_APP && (
         <div className="panel p-5">
           <h3 className="font-semibold">Demo data</h3>
           <p className="mb-3 text-sm text-slate-500">Put every account, payment and lesson setting back to the starting demo.</p>
@@ -563,6 +564,7 @@ function Themes() {
             <RotateCcw size={16} /> Reset demo data
           </button>
         </div>
+        )}
       </div>
       <Modal
         open={confirm}

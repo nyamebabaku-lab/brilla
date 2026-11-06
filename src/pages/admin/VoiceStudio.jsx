@@ -9,6 +9,7 @@ import { blobToDataURL, dataURLToBlob, deleteClip, getClip, listClipKeys, putCli
 import { refreshStudioClips } from '../../lib/voiceBank';
 import { audioCtx } from '../../lib/audio';
 import { useDB } from '../../data/store';
+import { saveFile } from '../../lib/files';
 import { toast } from '../../components/ui';
 import { cls } from '../../lib/format';
 
@@ -121,10 +122,7 @@ export default function VoiceStudio() {
     }
     if (!Object.keys(clips).length) return toast.error('Nothing recorded yet for this voice');
     const file = new Blob([JSON.stringify({ brillaVoicePack: 1, voice, version: catalogue.version, clips })], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(file);
-    a.download = `brilla-voice-${voice}-${Object.keys(clips).length}.json`;
-    a.click();
+    saveFile(`brilla-voice-${voice}-${Object.keys(clips).length}.json`, file);
   };
   const importPack = async (file) => {
     try {
@@ -294,7 +292,7 @@ function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh }) {
           );
         })}
       </div>
-      <div className="panel sticky top-20 h-fit space-y-3 p-5 text-center">
+      <div className="panel order-first h-fit space-y-3 p-5 text-center lg:sticky lg:top-20 lg:order-none">
         <div className="text-xs text-slate-400">
           {line.key} · line {cur + 1} of {lines.length}
         </div>

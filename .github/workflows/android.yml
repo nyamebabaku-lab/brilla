@@ -34,22 +34,32 @@ jobs:
           yes | "$SDKM" --licenses > /dev/null || true
           "$SDKM" "platforms;android-36" "build-tools;36.0.0" > /dev/null
       - run: npm ci
+      # Family app
       - run: npm run build:app
       - run: npx cap sync android
-      - name: Build debug APK
+      - name: Build Brilla APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk brilla.apk
+      # Admin app
+      - run: npm run build:admin
+      - run: APP=admin npx cap sync android
+      - name: Build Brilla Admin APK
+        working-directory: android-admin
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - run: cp android-admin/app/build/outputs/apk/debug/app-debug.apk brilla-admin.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: brilla-apk
-          path: brilla.apk
+          name: brilla-apks
+          path: |
+            brilla.apk
+            brilla-admin.apk
       - name: Publish to the android-latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete android-latest --yes --cleanup-tag || true
-          gh release create android-latest brilla.apk \
+          gh release create android-latest brilla.apk brilla-admin.apk \
             --title "Brilla Android (latest test build)" \
-            --notes "Installable test APK built from ${GITHUB_SHA::7}. Data is saved on the phone only and payments are in test mode." \
+            --notes "Installable test APKs built from ${GITHUB_SHA::7}: brilla.apk (families) and brilla-admin.apk (admin + Voice studio). Data is saved on each phone only and payments are in test mode." \
             --prerelease

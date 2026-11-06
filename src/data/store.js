@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { buildSeed, DEFAULT_SETTINGS } from './seed';
-import { IS_APP } from '../lib/platform';
+import { IS_ADMIN_APP, IS_APP } from '../lib/platform';
 
 const seed = () => buildSeed({ demo: !IS_APP });
 import { uid, nowISO, todayKey } from '../lib/format';
@@ -85,7 +85,7 @@ export const useDB = create(
       resetDemo: () => set({ ...seed(), session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 } }),
     }),
     {
-      name: IS_APP ? 'brilla-app' : 'brilla-db',
+      name: IS_ADMIN_APP ? 'brilla-admin' : IS_APP ? 'brilla-app' : 'brilla-db',
       version: 5,
       // v2: add demo records introduced later (e.g. the expired-plan family) without touching the user's own data.
       migrate: (state, version) => {

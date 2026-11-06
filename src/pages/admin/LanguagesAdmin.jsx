@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { ChevronDown, Download, Mic, Play, Plus, Square, Trash2, Upload } from 'lucide-react';
 import { Field, Modal, Toggle, toast } from '../../components/ui';
 import { useDB } from '../../data/store';
+import { saveFile } from '../../lib/files';
 import { LEVELS } from '../../curriculum/levels';
 import { DEFAULT_LANGUAGES } from '../../curriculum/languagePacks';
 import { blobToDataURL, dataURLToBlob, deleteClip, getClip, putClip } from '../../data/audioStore';
@@ -87,10 +88,7 @@ export default function LanguagesAdmin() {
           if (blob) audio[w.id] = await blobToDataURL(blob);
         }
     const file = new Blob([JSON.stringify({ brillaLanguagePack: 1, pack, audio }, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(file);
-    a.download = `brilla-${pack.id}-pack.json`;
-    a.click();
+    saveFile(`brilla-${pack.id}-pack.json`, file);
   };
   const importPack = async (file) => {
     try {

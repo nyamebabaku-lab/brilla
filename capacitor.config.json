@@ -1,8 +1,0 @@
-{
-  "appId": "app.brilla.kids",
-  "appName": "Brilla",
-  "webDir": "dist-app",
-  "android": {
-    "backgroundColor": "#fff7ed"
-  }
-}

@@ -8,6 +8,7 @@ import { sfx } from '../lib/sfx';
 import { cls } from '../lib/format';
 import { useDB } from '../data/store';
 import { instructorOf } from '../lib/instructors';
+import { answerText } from './exampleText';
 
 const TILE = ['bg-rose-400', 'bg-amber-400', 'bg-emerald-400', 'bg-sky-400', 'bg-violet-400', 'bg-pink-400'];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -66,7 +67,13 @@ export default function Example({ step, onDone, child }) {
         await wait(voiceOn ? 400 : 1200);
         setPhase(1);
         sfx('correct');
-        await say(`The answer is ${answerText(ex)}. ${ex.explain || ''}`);
+        const right = ex.options[ex.answer];
+        if (right?.local) {
+          // Ghanaian-language answers are played from the native-speaker recording.
+          await say('The answer is');
+          await playLocal(right.local.lang, right.local.word);
+          if (ex.explain) await say(ex.explain);
+        } else await say(`The answer is ${answerText(ex)}. ${ex.explain || ''}`);
       }
       if (!alive.current) return;
       setPhase(2);
@@ -135,13 +142,4 @@ export default function Example({ step, onDone, child }) {
       </NextButton>
     </div>
   );
-}
-
-export function answerText(q) {
-  const o = q.options[q.answer];
-  if (q.answerText) return q.answerText;
-  if (o.label) return o.label;
-  if (o.size) return o.size === 'lg' ? 'the big one' : 'the small one';
-  if (o.group) return `the group with ${o.group.length}`;
-  return 'this one';
 }

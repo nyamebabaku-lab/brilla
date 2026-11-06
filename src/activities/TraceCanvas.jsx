@@ -6,6 +6,7 @@ import { say } from '../lib/speech';
 import { sfx } from '../lib/sfx';
 import { cls } from '../lib/format';
 import { Brill } from '../components/brand';
+import { PATH_NAMES, sayFor } from './traceText';
 
 export const TRACE_PATHS = {
   down: 'M50 12 V88',
@@ -24,7 +25,6 @@ export const TRACE_PATHS = {
   star: 'M50 8 L61 36 L91 37 L67 56 L76 86 L50 69 L24 86 L33 56 L9 37 L39 36 Z',
   heart: 'M50 86 C10 58 6 30 24 20 C36 13 46 20 50 30 C54 20 64 13 76 20 C94 30 90 58 50 86 Z',
 };
-const PATH_NAMES = { down: 'a line going down', across: 'a line going across', slant: 'a slanting line', slant2: 'a slanting line', wave: 'a wavy line', zigzag: 'a zig zag line', curve: 'a curve, like a rainbow', loop: 'a loopy line', circle: 'a circle', oval: 'an oval', square: 'a square', triangle: 'a triangle', diamond: 'a diamond', star: 'a star', heart: 'a heart' };
 // Measures a guide path (in its 0–100 box) so the demo pen can follow it.
 const pathCache = {};
 function pathEl(d) {
@@ -43,12 +43,6 @@ const ACCENT = '#f97316';
 const INK = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
 const PASS = 0.7;
 
-function sayFor(step) {
-  if (step.kind === 'path') return `Trace ${PATH_NAMES[step.target]}`;
-  if (step.kind === 'number') return `Trace the number ${step.target}`;
-  if (step.kind === 'letter') return `Trace the letter ${step.target}. ${step.target === step.target.toUpperCase() ? 'Capital' : 'Small'} ${step.target}.`;
-  return `Trace the word ${step.target}`;
-}
 
 export default function TraceCanvas({ step, onDone }) {
   const wrap = useRef(null);

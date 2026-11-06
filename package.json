@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:app": "vite build --mode app --outDir dist-app"
+    "build:app": "vite build --mode app --outDir dist-app",
+    "voice:script": "esbuild scripts/voice-script.mjs --bundle --platform=node --format=esm --log-level=error --outfile=node_modules/.cache/voice-script.mjs && node node_modules/.cache/voice-script.mjs"
   },
   "dependencies": {
     "@capacitor-community/text-to-speech": "^8.0.2",

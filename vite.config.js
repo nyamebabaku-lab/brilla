@@ -33,6 +33,11 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: 'index.html',
+        // Teacher voice clips are fetched when first needed, then kept for offline use.
+        runtimeCaching: [
+          { urlPattern: /\/voice\/manifest\.json$/, handler: 'NetworkFirst', options: { cacheName: 'brilla-voice-list' } },
+          { urlPattern: /\/voice\/.+\.mp3$/, handler: 'CacheFirst', options: { cacheName: 'brilla-voices', expiration: { maxEntries: 12000 }, cacheableResponse: { statuses: [0, 200] } } },
+        ],
       },
     }),
   ],

@@ -10,6 +10,9 @@ import App from './App.jsx';
 import { toast } from './components/ui';
 import { App as NativeApp } from '@capacitor/app';
 import { IS_NATIVE } from './lib/platform';
+import { loadVoiceBank } from './lib/voiceBank';
+
+loadVoiceBank();
 
 window.addEventListener('brilla-storage-full', () => toast.error('Device storage is full', 'Delete some drawings from the sticker book gallery'));
 

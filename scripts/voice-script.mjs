@@ -242,10 +242,35 @@ const display = (words, info) => {
   return s;
 };
 // ---------------------------------------------------------------- 3. decide what to record
-const templates = new Map(); // template → { variants:Set, section, question, chunks: [] }
+// A vocabulary word only becomes a swappable "slot" where the app really puts different words in that spot
+// (e.g. "What colour is the [banana / leaf / sun]?"); otherwise it stays part of the sentence piece.
+const chunkRuns = new Map(); // chunk words → runs
+for (const item of corpus) for (const chunk of toChunks(item.text)) chunkRuns.set(chunk.words.join(' '), null);
+for (const key of chunkRuns.keys()) chunkRuns.set(key, slotRuns(key.split(' ')));
+const fillers = new Map(); // context with one V run blanked → set of words seen there
+const ctxKey = (runs, at) => runs.map((r, i) => (i === at ? '#' : r.slot && r.slot !== 'V' ? `#${r.slot}` : r.words.join(' '))).join(' ');
+for (const runs of chunkRuns.values())
+  runs.forEach((r, i) => {
+    if (r.slot !== 'V') return;
+    const k = ctxKey(runs, i);
+    if (!fillers.has(k)) fillers.set(k, new Set());
+    fillers.get(k).add(r.words.join(' '));
+  });
+function settleRuns(runs) {
+  const out = [];
+  runs.forEach((r, i) => {
+    const slot = r.slot === 'V' && (fillers.get(ctxKey(runs, i))?.size || 0) < 3 ? null : r.slot;
+    const last = out[out.length - 1];
+    if (!slot && last && !last.slot) last.words = [...last.words, ...r.words];
+    else out.push({ slot, words: [...r.words] });
+  });
+  return out;
+}
+
+const templates = new Map(); // template → { variants, sections, question, runs }
 for (const item of corpus) {
   for (const chunk of toChunks(item.text)) {
-    const runs = slotRuns(chunk.words);
+    const runs = settleRuns(chunkRuns.get(chunk.words.join(' ')) || slotRuns(chunk.words));
     const tpl = runs.map((r) => (r.slot ? `#${r.slot}` : r.words.join(' '))).join(' ');
     const t = templates.get(tpl) || { variants: new Map(), sections: new Map(), question: false, runs };
     t.variants.set(chunk.words.join(' '), runs);
@@ -355,7 +380,13 @@ const fresh = coverage(corpus);
 
 // ---------------------------------------------------------------- 6. write outputs
 entries.sort((a, b) => order.concat(['P', 'T', 'G']).indexOf(a.key[0]) - order.concat(['P', 'T', 'G']).indexOf(b.key[0]) || a.key.localeCompare(b.key));
-fs.writeFileSync(CATALOGUE, JSON.stringify({ version: 1, note: 'Permanent voice keys. Never renumber or remove; new lines get new keys.', entries }, null, 1));
+fs.writeFileSync(CATALOGUE, JSON.stringify({ version: 2, note: 'Permanent voice keys. Never renumber or remove; new lines get new keys.', entries }, null, 1));
+// Slim copy for the app: just what's needed to match speech to clips.
+const bank = {
+  phrases: entries.filter((e) => e.words && e.kind !== 'sound' && e.kind !== 'local').map((e) => [e.key, e.words]),
+  sounds: Object.fromEntries(entries.filter((e) => e.kind === 'sound').map((e) => [e.sound, e.key])),
+};
+fs.writeFileSync(path.join(ROOT, 'src/voice/bank.json'), JSON.stringify(bank));
 fs.mkdirSync(OUT, { recursive: true });
 const csv = ['key,section,take,kind,text,tip,meaning'];
 const takeOf = (key) => `${key[0]}${String(Math.ceil(Number(key.split('-')[1]) / 50)).padStart(2, '0')}`;

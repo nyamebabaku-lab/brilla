@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const { entries } = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/voice/catalogue.json'), 'utf8'));
+const { entries, version } = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/voice/catalogue.json'), 'utf8'));
 const TAKE = 50;
 
 const SECTIONS = {
@@ -38,14 +38,14 @@ const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'l
 body += `
 <section class="cover">
   <div class="star">★</div>
-  <h1>Brilla<br><span>Teacher Voice Script</span></h1>
+  <h1>Brilla<br><span>Teacher Voice Script · v${version}</span></h1>
   <p class="lead">Every line Auntie Akos and Uncle Kwame say in the app, to be recorded once each.</p>
   <table class="totals">
     ${totals.map(([s, n]) => `<tr><td><b>${s}</b></td><td>${SECTIONS[s][0]}</td><td>${n} lines · ${Math.ceil(n / TAKE)} take${n > TAKE ? 's' : ''}</td></tr>`).join('')}
     <tr class="sum"><td></td><td>Each teacher records</td><td>${voiceLines.length} lines</td></tr>
     <tr class="sum"><td></td><td>Native speakers record</td><td>${entries.length - voiceLines.length} Twi/Ga words</td></tr>
   </table>
-  <p class="small">Version ${today}. Keys are permanent: a key always means the same line.</p>
+  <p class="small"><b>Script version ${version}</b> · ${today}. Keys are permanent from this version on: a key always means the same line.</p>
 </section>
 
 <section class="howto">

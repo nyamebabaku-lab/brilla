@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { listVoices, say, setInstructor } from '../../lib/speech';
 import { INSTRUCTORS } from '../../lib/instructors';
+import { downloadVoices, voiceStats } from '../../lib/voiceBank';
+import { IS_APP } from '../../lib/platform';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart3, CreditCard, Pencil, Play, Plus, Settings, Trash2, Users } from 'lucide-react';
 import DashShell from '../../components/DashShell';
@@ -364,6 +366,7 @@ function SettingsTab({ user }) {
         <Toggle checked={prefs.voice} onChange={(v) => setPrefs({ voice: v })} label="Read lessons aloud" />
         <Toggle checked={prefs.sound} onChange={(v) => setPrefs({ sound: v })} label="Sound effects" />
         <VoicePicker />
+        {!IS_APP && <VoiceDownload />}
         <div className="pt-2">
           <InstallButton />
           <p className="mt-2 text-sm text-slate-500">Install Brilla to use it offline like a normal app.</p>
@@ -409,6 +412,31 @@ function VoicePicker() {
         );
       })}
       <p className="text-xs text-slate-500">Voices come from your phone or computer. For the clearest sound: on Android install “Speech Services by Google” and download the high-quality English voice; on iPhone go to Settings → Accessibility → Spoken Content → Voices and download an “Enhanced” voice.</p>
+    </div>
+  );
+}
+
+/** Saves the recorded teacher voices on this device so they work without internet (website only; the app has them built in). */
+function VoiceDownload() {
+  const kids = useDB(useShallow((s) => s.children.filter((c) => c.ownerId === s.session.userId)));
+  const [progress, setProgress] = useState(null);
+  const stats = voiceStats();
+  if (!stats.akos && !stats.kwame) return null;
+  const genders = [...new Set(kids.map((k) => k.instructor || 'female'))];
+  const run = async () => {
+    for (const g of genders) await downloadVoices(g, (d, t) => setProgress(`${INSTRUCTORS[g].name}: ${d}/${t}`));
+    setProgress('done');
+    toast.success('Teacher voices saved', 'They now work without internet');
+  };
+  return (
+    <div className="space-y-2 rounded-2xl bg-slate-50 p-3">
+      <div className="text-sm font-semibold">Recorded teacher voices</div>
+      <p className="text-xs text-slate-500">
+        Auntie Akos: {stats.akos} lines · Uncle Kwame: {stats.kwame} lines recorded. Lines not recorded yet use the device voice.
+      </p>
+      <button type="button" onClick={run} disabled={progress && progress !== 'done'} className="btn-soft text-sm">
+        {progress && progress !== 'done' ? `Saving ${progress}…` : progress === 'done' ? 'Saved for offline ✓' : 'Download voices for offline'}
+      </button>
     </div>
   );
 }

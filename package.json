@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "build:app": "vite build --mode app --outDir dist-app",
-    "voice:script": "esbuild scripts/voice-script.mjs --bundle --platform=node --format=esm --log-level=error --outfile=node_modules/.cache/voice-script.mjs && node node_modules/.cache/voice-script.mjs"
+    "voice:script": "esbuild scripts/voice-script.mjs --bundle --platform=node --format=esm --log-level=error --outfile=node_modules/.cache/voice-script.mjs && node node_modules/.cache/voice-script.mjs",
+    "voice:sync": "esbuild scripts/voice-sync.mjs --bundle --platform=node --format=esm --log-level=error --outfile=node_modules/.cache/voice-sync.mjs && node node_modules/.cache/voice-sync.mjs",
+    "voice:pdf": "node scripts/voice-pdf.mjs"
   },
   "dependencies": {
     "@capacitor-community/text-to-speech": "^8.0.2",

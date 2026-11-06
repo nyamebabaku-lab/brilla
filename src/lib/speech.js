@@ -5,6 +5,7 @@ import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { duckForSpeech } from './music';
 import { IS_NATIVE } from './platform';
 import { SOUND_SPELLING } from './soundSpelling';
+import { planFor, playPlan, playSound, setVoiceTeacher, stopVoice } from './voiceBank';
 
 let nativeVoices = [];
 
@@ -90,6 +91,7 @@ export const setSpeechEnabled = (on) => {
 };
 /** 'female' | 'male' — the lesson instructor's voice. */
 export function setInstructor(g) {
+  setVoiceTeacher(g);
   if (g === gender && chosen) return;
   gender = g === 'male' ? 'male' : 'female';
   chosen = pickVoice();
@@ -100,8 +102,26 @@ export function setVoiceOverrides(o) {
 }
 export const currentVoiceName = () => chosen?.voice?.name || 'Device voice';
 
-/** Speaks `text`; resolves when finished (or after a safety timeout). */
-export function say(text, { rate = 0.95, pitch, interrupt = true, lang } = {}) {
+/**
+ * Speaks `text`: from the teacher's recordings when every part is recorded, otherwise with the device voice.
+ * Resolves when finished.
+ */
+export function say(text, opts = {}) {
+  if (!enabled || !text) return Promise.resolve();
+  const plan = opts.lang ? null : planFor(String(text));
+  if (plan) {
+    if (opts.interrupt !== false) stopDevice();
+    duckForSpeech(true);
+    return playPlan(plan, { sayName: (w) => deviceSay(w, { ...opts, interrupt: false }) })
+      .then((ok) => (ok ? null : deviceSay(text, opts)))
+      .finally(() => duckForSpeech(false));
+  }
+  if (opts.interrupt !== false) stopVoice();
+  return deviceSay(text, opts);
+}
+
+/** Speaks with the phone's or computer's own voice; resolves when finished (or after a safety timeout). */
+function deviceSay(text, { rate = 0.95, pitch, interrupt = true, lang } = {}) {
   return new Promise((resolve) => {
     if (!enabled || !text || !speechSupported()) return resolve();
     if (IS_NATIVE) {
@@ -140,10 +160,15 @@ export function say(text, { rate = 0.95, pitch, interrupt = true, lang } = {}) {
   });
 }
 
-export function stopSpeaking() {
+function stopDevice() {
   if (IS_NATIVE) TextToSpeech.stop().catch(() => {});
   else if (speechSupported()) speechSynthesis.cancel();
 }
+export function stopSpeaking() {
+  stopVoice();
+  stopDevice();
+}
 
 export { SOUND_SPELLING } from './soundSpelling';
-export const sayLetterSound = (s) => say(SOUND_SPELLING[s] || s, { rate: 0.75 });
+/** A phonics sound: the recorded sound if there is one, otherwise the device voice's best try. */
+export const sayLetterSound = (s) => playSound(s).then((played) => (played ? null : deviceSay(SOUND_SPELLING[s] || s, { rate: 0.75 })));

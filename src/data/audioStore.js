@@ -23,6 +23,8 @@ async function tx(mode, fn) {
 export const putClip = (key, blob) => tx('readwrite', (s) => s.put(blob, key));
 export const getClip = (key) => tx('readonly', (s) => s.get(key));
 export const deleteClip = (key) => tx('readwrite', (s) => s.delete(key));
+/** All stored keys starting with `prefix` (e.g. 'voice:akos:'). */
+export const listClipKeys = (prefix = '') => tx('readonly', (s) => s.getAllKeys()).then((keys) => (keys || []).filter((k) => String(k).startsWith(prefix)));
 
 export const blobToDataURL = (blob) =>
   new Promise((resolve) => {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, CreditCard, Eye, EyeOff, Languages, LayoutDashboard, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
+import { BookOpen, CreditCard, Eye, EyeOff, Languages, LayoutDashboard, Mic, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
 import LanguagesAdmin from './LanguagesAdmin';
+import VoiceStudio from './VoiceStudio';
 import DashShell from '../../components/DashShell';
 import { Bars } from '../../components/Charts';
 import { Field, Modal, Stat, Toggle, toast } from '../../components/ui';
@@ -22,6 +23,7 @@ export default function AdminDash() {
     { id: 'plans', label: 'Plans & prices', icon: <Tag size={16} /> },
     { id: 'lessons', label: 'Lessons', icon: <BookOpen size={16} /> },
     { id: 'languages', label: 'Twi & Ga', icon: <Languages size={16} /> },
+    { id: 'voice', label: 'Voice studio', icon: <Mic size={16} /> },
     { id: 'subscribers', label: 'Subscribers', icon: <Users size={16} /> },
     { id: 'payments', label: 'Payments', icon: <CreditCard size={16} /> },
     { id: 'themes', label: 'Themes', icon: <Palette size={16} /> },
@@ -32,6 +34,7 @@ export default function AdminDash() {
       {tab === 'plans' && <Plans />}
       {tab === 'lessons' && <Lessons />}
       {tab === 'languages' && <LanguagesAdmin />}
+      {tab === 'voice' && <VoiceStudio />}
       {tab === 'subscribers' && <Subscribers />}
       {tab === 'payments' && <Payments />}
       {tab === 'themes' && <Themes />}

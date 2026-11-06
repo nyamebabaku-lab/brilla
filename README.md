@@ -30,3 +30,19 @@ React + Vite + Tailwind + Zustand (saved in the browser) + PWA (offline). No bac
 - `src/activities/`: tracing, drawing, colouring, quiz, sorting, spelling, phonics and writing activities
 - `src/lib/payments.js`: simulated MoMo and card checkout (the place to connect Paystack/Hubtel)
 - `src/data/store.js`: all data (the place to connect a Supabase backend)
+
+## Teacher voices (voice bank)
+
+Every line the app speaks is in `src/voice/catalogue.json` with a permanent key (e.g. `M-0247 "What is"`).
+The app joins recorded clips to say any lesson; anything not recorded yet uses the device voice.
+
+1. **Script:** `npm run voice:script` rebuilds the catalogue from the lesson generators (keys never change),
+   then `npm run voice:pdf` writes `release/Brilla-Voice-Script.html` (print it to PDF).
+2. **Record:** read each 50-line take in order, ~1.5 s pause between lines, 4 s pause to redo the last line.
+   Name files `Akos_M03.m4a`, `Kwame_M03.m4a`, `Twi_T01.m4a`, `Ga_G01.m4a`. Or record in **Admin → Voice studio**
+   and use *Export* to make a voice pack.
+3. **Sync:** put the files (and/or voice packs) in a folder and run
+   `FFMPEG=/path/to/ffmpeg npm run voice:sync -- <folder>`. Clips go to `public/voice/<teacher>/<key>.mp3`,
+   the manifest is updated, and `release/voice-sync-report.md` lists any take that needs checking
+   (takes whose line count doesn't match are not saved).
+4. Build and deploy as usual; the Android build includes the clips.

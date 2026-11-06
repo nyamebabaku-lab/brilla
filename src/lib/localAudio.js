@@ -4,6 +4,7 @@ import { useDB } from '../data/store';
 import { getClip } from '../data/audioStore';
 import { say, stopSpeaking } from './speech';
 import { duckForSpeech } from './music';
+import { localClipUrl } from './voiceBank';
 
 let current = null;
 
@@ -38,6 +39,19 @@ export async function playLocal(lang, word) {
         await current.play();
         return;
       }
+    } catch {
+      /* fall back to the device voice */
+    }
+  }
+  // Native-speaker recording that ships with the app.
+  const url = localClipUrl(lang, word.id);
+  if (url) {
+    try {
+      current = new Audio(url);
+      duckForSpeech(true);
+      current.onended = () => duckForSpeech(false);
+      await current.play();
+      return;
     } catch {
       /* fall back to the device voice */
     }

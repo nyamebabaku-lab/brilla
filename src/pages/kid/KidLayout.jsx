@@ -9,6 +9,7 @@ import { GrownUpGate, OfflineBadge } from '../../components/common';
 import { Brill } from '../../components/brand';
 import { todayKey } from '../../lib/format';
 import { setInstructor } from '../../lib/speech';
+import { setChildName } from '../../lib/voiceBank';
 import { useChildAccess } from '../../lib/access';
 import RenewWall from './RenewWall';
 
@@ -37,6 +38,7 @@ export default function KidLayout({ child, back, title, children, hideBar }) {
   useEffect(() => {
     setInstructor(child?.instructor || 'female');
   }, [child?.instructor]);
+  useEffect(() => setChildName(child?.name), [child?.name]);
 
   useEffect(() => {
     if (!child) return;

@@ -36,6 +36,8 @@ export const toast = {
   success: (title, body) => pushToast({ kind: 'success', title, body }),
   error: (title, body) => pushToast({ kind: 'error', title, body }),
   info: (title, body) => pushToast({ kind: 'info', title, body }),
+  /** A message with an Undo button, shown a little longer. */
+  undo: (title, onUndo, body = 'Find it later in Backup & safety → Recycle bin') => pushToast({ kind: 'info', title, body, action: { label: 'Undo', onClick: onUndo }, ms: 8000 }),
 };
 export function Toaster() {
   const [items, setItems] = useState([]);
@@ -43,7 +45,7 @@ export function Toaster() {
     pushToast = (t) => {
       const id = Math.random();
       setItems((x) => [...x, { ...t, id }]);
-      setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 3800);
+      setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), t.ms || 3800);
     };
   }, []);
   return createPortal(
@@ -52,15 +54,60 @@ export function Toaster() {
         <div key={t.id} className={cls('pointer-events-auto w-full max-w-sm rounded-2xl border-2 bg-white px-4 py-3 shadow-lift animate-fade-in', t.kind === 'error' ? 'border-rose-200' : t.kind === 'success' ? 'border-emerald-200' : 'border-brand-200')}>
           <div className="flex items-start gap-2">
             <span className="text-lg">{t.kind === 'error' ? '⚠️' : t.kind === 'success' ? '✅' : '💡'}</span>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="font-semibold">{t.title}</div>
               {t.body && <div className="text-sm text-slate-500">{t.body}</div>}
             </div>
+            {t.action && (
+              <button
+                onClick={() => {
+                  t.action.onClick();
+                  setItems((x) => x.filter((i) => i.id !== t.id));
+                }}
+                className="shrink-0 rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-bold text-white"
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
         </div>
       ))}
     </div>,
     document.body,
+  );
+}
+
+// ---- "Are you sure?" dialogs ----
+let pushConfirm = () => Promise.resolve(window.confirm('Are you sure?'));
+/** Asks before something destructive. Resolves true if the user confirms. */
+export const confirmDialog = (opts) => pushConfirm(opts);
+export function ConfirmHost() {
+  const [req, setReq] = useState(null);
+  useEffect(() => {
+    pushConfirm = (opts) => new Promise((resolve) => setReq({ ...opts, resolve }));
+  }, []);
+  const close = (ok) => {
+    req?.resolve(ok);
+    setReq(null);
+  };
+  return (
+    <Modal
+      open={!!req}
+      onClose={() => close(false)}
+      title={req?.title || 'Are you sure?'}
+      footer={
+        <>
+          <button onClick={() => close(false)} className="btn-ghost">
+            Cancel
+          </button>
+          <button onClick={() => close(true)} className={req?.danger === false ? 'btn-primary' : 'btn bg-rose-600 text-white'}>
+            {req?.confirmLabel || 'Delete'}
+          </button>
+        </>
+      }
+    >
+      {req?.body && <p className="text-slate-600">{req.body}</p>}
+    </Modal>
   );
 }
 

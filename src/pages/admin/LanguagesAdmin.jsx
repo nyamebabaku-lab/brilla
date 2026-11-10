@@ -1,12 +1,13 @@
 // Admin: Ghanaian language word banks: edit words, record/upload native-speaker audio, import/export packs.
 import { useRef, useState } from 'react';
 import { ChevronDown, Download, Mic, Play, Plus, Square, Trash2, Upload } from 'lucide-react';
-import { Field, Modal, Toggle, toast } from '../../components/ui';
+import { Field, Modal, Toggle, confirmDialog, toast } from '../../components/ui';
+import { moveToTrash, restoreFromTrash, saveClipWithHistory } from '../../lib/safety';
 import { useDB } from '../../data/store';
 import { saveFile } from '../../lib/files';
 import { LEVELS } from '../../curriculum/levels';
 import { DEFAULT_LANGUAGES } from '../../curriculum/languagePacks';
-import { blobToDataURL, dataURLToBlob, deleteClip, getClip, putClip } from '../../data/audioStore';
+import { blobToDataURL, dataURLToBlob, getClip, putClip } from '../../data/audioStore';
 import { playLocal } from '../../lib/localAudio';
 import { cls, uid } from '../../lib/format';
 
@@ -63,13 +64,32 @@ export default function LanguagesAdmin() {
     const c = pack.categories.find((x) => x.id === catId);
     setCat(catId, { words: [...c.words, { id: uid('w').slice(2), w: '', en: '', emoji: '⭐' }] });
   };
+  // Deleting asks first, then goes to the recycle bin (with Undo). The word's recording goes with it.
   const removeWord = async (catId, wordId) => {
     const c = pack.categories.find((x) => x.id === catId);
+    const index = c.words.findIndex((w) => w.id === wordId);
+    const word = c.words[index];
+    const label = `${pack.name}: “${word.w || 'new word'}”${word.en ? ` (${word.en})` : ''}`;
+    if ((word.w || word.audio) && !(await confirmDialog({ title: 'Delete this word?', body: `${label}. It goes to the recycle bin for 30 days.` }))) return;
     setCat(catId, { words: c.words.filter((w) => w.id !== wordId) });
-    await deleteClip(`${pack.id}:${wordId}`).catch(() => {});
+    const binId = await moveToTrash('word', label, { lang: pack.id, catId, index, word, category: { ...c, words: [] } });
+    const clipBin = word.audio ? await moveToTrash('clip', `${label} recording`, { storeKey: `${pack.id}:${wordId}`, lang: pack.id, wordId }) : null;
+    toast.undo('Word deleted', async () => {
+      await restoreFromTrash(binId);
+      if (clipBin) await restoreFromTrash(clipBin);
+    });
+  };
+  const removeTopic = async (c) => {
+    const index = pack.categories.findIndex((x) => x.id === c.id);
+    const label = `${pack.name} topic “${c.title}” (${c.words.length} words)`;
+    if (!(await confirmDialog({ title: 'Delete this whole topic?', body: `${label}. It goes to the recycle bin for 30 days; recordings are kept.` }))) return;
+    savePack({ ...pack, categories: pack.categories.filter((x) => x.id !== c.id) });
+    const binId = await moveToTrash('topic', label, { lang: pack.id, index, category: c });
+    toast.undo('Topic deleted', () => restoreFromTrash(binId));
   };
   const saveAudio = async (catId, word, blob) => {
-    await putClip(`${pack.id}:${word.id}`, blob);
+    // The previous recording is kept as an earlier version.
+    await saveClipWithHistory(`${pack.id}:${word.id}`, blob);
     setWord(catId, word.id, { audio: true });
     toast.success(`Saved audio for “${word.w || 'word'}”`);
   };
@@ -159,7 +179,7 @@ export default function LanguagesAdmin() {
                         </option>
                       ))}
                     </select>
-                    <button onClick={() => savePack({ ...pack, categories: pack.categories.filter((x) => x.id !== c.id) })} className="btn-danger px-3" aria-label="Delete topic">
+                    <button onClick={() => removeTopic(c)} className="btn-danger px-3" aria-label="Delete topic">
                       <Trash2 size={16} />
                     </button>
                   </div>

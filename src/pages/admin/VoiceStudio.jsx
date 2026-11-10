@@ -2,15 +2,16 @@
 // Clips are saved on this device (IndexedDB 'voice:<teacher>:<key>'; Twi/Ga words under '<lang>:<wordId>')
 // and used by the app straight away. "Export" makes a file to send for publishing to every family.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Mic, Play, Square, Trash2, Upload, Merge } from 'lucide-react';
+import { AlertTriangle, Download, History, Mic, Play, Square, Trash2, Upload, Merge } from 'lucide-react';
 import catalogue from '../../voice/catalogue.json';
 import { findSegments, alignSegments, cutClip, expectedSeconds } from '../../voice/segment';
-import { blobToDataURL, dataURLToBlob, deleteClip, getClip, listClipKeys, putClip } from '../../data/audioStore';
+import { blobToDataURL, dataURLToBlob, getClip, listClipKeys } from '../../data/audioStore';
 import { refreshStudioClips } from '../../lib/voiceBank';
 import { audioCtx } from '../../lib/audio';
 import { useDB } from '../../data/store';
 import { saveFile } from '../../lib/files';
-import { toast } from '../../components/ui';
+import { Modal, confirmDialog, toast } from '../../components/ui';
+import { QUALITY_TEXT, checkQuality, clipHistory, markLocalAudio, moveToTrash, restoreFromTrash, restoreVersion, saveClipWithHistory, storageUse } from '../../lib/safety';
 import { cls } from '../../lib/format';
 
 const TAKE = 50;
@@ -70,11 +71,13 @@ function playPcm(pcm, rate) {
   src.start();
 }
 
-export default function VoiceStudio() {
-  const settings = useDB((s) => s.settings);
-  const updateSettings = useDB((s) => s.updateSettings);
-  const [voice, setVoice] = useState('akos');
-  const v = VOICES.find((x) => x.id === voice);
+/** `allowedVoices`: for recorder logins, the voices they may record (all, for admins). */
+export default function VoiceStudio({ allowedVoices }) {
+  const voices = VOICES.filter((x) => !allowedVoices || allowedVoices.includes(x.id));
+  const clipMeta = useDB((s) => s.clipMeta);
+  const setClipMeta = useDB((s) => s.setClipMeta);
+  const [voice, setVoice] = useState(voices[0]?.id || 'akos');
+  const v = voices.find((x) => x.id === voice) || voices[0];
   const [section, setSection] = useState('A');
   const sec = v.sections.includes(section) ? section : v.sections[0];
   const all = useMemo(() => linesFor(voice, sec), [voice, sec]);
@@ -85,10 +88,12 @@ export default function VoiceStudio() {
   const [done, setDone] = useState(new Set());
   const [mode, setMode] = useState('line');
 
+  const [storage, setStorage] = useState(null);
   const refresh = async () => {
     const keys = new Set(await listClipKeys(''));
     setDone(keys);
     await refreshStudioClips();
+    setStorage(await storageUse());
   };
   useEffect(() => {
     refresh();
@@ -97,21 +102,27 @@ export default function VoiceStudio() {
   const voiceLines = ENTRIES.filter((e) => v.sections.includes(e.section) && (!e.only || e.only === voice));
   const recorded = voiceLines.filter((e) => done.has(storeKey(voice, e))).length;
 
-  // Twi/Ga clips also switch on the word's audio in the Twi & Ga subject.
-  const markLocal = (e, on) => {
-    const langs = settings.languages;
-    const pack = langs?.[e.lang];
-    if (!pack) return;
-    updateSettings({ languages: { ...langs, [e.lang]: { ...pack, categories: pack.categories.map((c) => ({ ...c, words: c.words.map((w) => (w.id === e.wordId ? { ...w, audio: on } : w)) })) } } });
+  const needsCheck = voiceLines.filter((e) => done.has(storeKey(voice, e)) && clipMeta[storeKey(voice, e)]?.flags?.length).length;
+
+  // Saving keeps the previous version (last 3) so a re-recording can be undone.
+  const saveClip = async (e, blob, flags = []) => {
+    const key = storeKey(voice, e);
+    await saveClipWithHistory(key, blob);
+    setClipMeta(key, { at: Date.now(), flags });
+    // Twi/Ga clips also switch on the word's audio in the Twi & Ga subject.
+    if (e.kind === 'local') markLocalAudio(e.lang, e.wordId, true);
   };
-  const saveClip = async (e, blob) => {
-    await putClip(storeKey(voice, e), blob);
-    if (e.kind === 'local') markLocal(e, true);
-  };
+  // Deleting moves the recording to the recycle bin, with Undo.
   const removeClip = async (e) => {
-    await deleteClip(storeKey(voice, e));
-    if (e.kind === 'local') markLocal(e, false);
-    refresh();
+    const label = `${e.key} “${e.kind === 'sound' ? e.sound : e.text}”`;
+    if (!(await confirmDialog({ title: 'Delete this recording?', body: `${label}. It goes to the recycle bin for 30 days.` }))) return;
+    const id = await moveToTrash('clip', `${v.label}: ${label}`, { storeKey: storeKey(voice, e), lang: e.lang, wordId: e.wordId });
+    if (e.kind === 'local') markLocalAudio(e.lang, e.wordId, false);
+    await refresh();
+    toast.undo('Recording deleted', async () => {
+      await restoreFromTrash(id);
+      refresh();
+    });
   };
 
   const exportPack = async () => {
@@ -133,8 +144,8 @@ export default function VoiceStudio() {
       for (const [key, url] of Object.entries(data.clips)) {
         const e = byKey.get(key);
         if (!e) continue;
-        await putClip(storeKey(data.voice, e), await dataURLToBlob(url));
-        if (e.kind === 'local') markLocal(e, true);
+        await saveClipWithHistory(storeKey(data.voice, e), await dataURLToBlob(url));
+        if (e.kind === 'local') markLocalAudio(e.lang, e.wordId, true);
         n++;
       }
       toast.success(`Imported ${n} recordings`);
@@ -147,7 +158,7 @@ export default function VoiceStudio() {
   return (
     <div className="space-y-4">
       <div className="panel flex flex-wrap items-center gap-2 p-4">
-        {VOICES.map((x) => (
+        {voices.map((x) => (
           <button key={x.id} onClick={() => (setVoice(x.id), setTake(1))} className={cls('rounded-xl px-4 py-2 font-semibold', x.id === voice ? 'bg-brand-600 text-white' : 'bg-slate-100')}>
             {x.emoji} {x.label}
           </button>
@@ -168,6 +179,10 @@ export default function VoiceStudio() {
           <div className="flex-1">
             <div className="font-semibold">
               {v.emoji} {v.label}: {recorded} of {voiceLines.length} lines recorded on this device
+            </div>
+            <div className="text-xs text-slate-500">
+              {needsCheck > 0 && <span className="mr-3 font-semibold text-amber-600">⚠️ {needsCheck} recording{needsCheck > 1 ? 's' : ''} to check</span>}
+              {storage && `Storage: ${storage.usedMB.toFixed(1)} MB used${storage.quotaMB ? ` of ${Math.round(storage.quotaMB).toLocaleString()} MB` : ''} · ${storage.recordings} recordings, ${storage.history} older versions, ${storage.bin} in recycle bin`}
             </div>
             <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(recorded / Math.max(1, voiceLines.length)) * 100}%` }} />
@@ -211,7 +226,7 @@ export default function VoiceStudio() {
       </div>
 
       {mode === 'line' ? (
-        <LineRecorder key={`${voice}-${sec}-${t}`} voice={voice} lines={lines} done={done} saveClip={saveClip} removeClip={removeClip} refresh={refresh} />
+        <LineRecorder key={`${voice}-${sec}-${t}`} voice={voice} lines={lines} done={done} saveClip={saveClip} removeClip={removeClip} refresh={refresh} clipMeta={clipMeta} />
       ) : (
         <TakeImporter key={`${voice}-${sec}-${t}`} take={`${sec}${String(t).padStart(2, '0')}`} lines={lines} saveClip={saveClip} refresh={refresh} />
       )}
@@ -219,7 +234,8 @@ export default function VoiceStudio() {
   );
 }
 
-function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh }) {
+function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh, clipMeta }) {
+  const [historyFor, setHistoryFor] = useState(null);
   const firstTodo = Math.max(0, lines.findIndex((e) => !done.has(storeKey(voice, e))));
   const [cur, setCur] = useState(firstTodo);
   const [rec, setRec] = useState(null);
@@ -247,8 +263,10 @@ function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh }) {
         const pcm = buf.getChannelData(0);
         const { segments } = findSegments(pcm, buf.sampleRate, { lineGap: 5 });
         const seg = segments.length ? { start: segments[0].start, end: segments[segments.length - 1].end } : { start: 0, end: buf.duration };
+        const flags = checkQuality(pcm, buf.sampleRate, { ...seg, cutCheck: true }, line.kind === 'local' || line.kind === 'sound' ? '' : line.text);
         const blob = await encodeClip(cutClip(pcm, buf.sampleRate, seg), buf.sampleRate);
-        await saveClip(line, blob);
+        await saveClip(line, blob, flags);
+        if (flags.length) toast.error('Please check this recording', QUALITY_TEXT[flags[0]]);
         await refresh();
         playBlob(blob);
         setCur((c) => Math.min(lines.length - 1, c + 1));
@@ -278,6 +296,14 @@ function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh }) {
                 <span className="block truncate font-medium">{e.kind === 'sound' ? e.sound : e.text}</span>
                 {(e.example || e.meaning) && <span className="block truncate text-xs text-slate-400">{e.example ? `in: ${e.example}` : `means ${e.meaning}`}</span>}
               </span>
+              {ok && clipMeta[storeKey(voice, e)]?.flags?.length > 0 && (
+                <span title={clipMeta[storeKey(voice, e)].flags.map((f) => QUALITY_TEXT[f]).join(' ')} className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-600">
+                  <AlertTriangle size={14} />
+                </span>
+              )}
+              <button onClick={(ev) => (ev.stopPropagation(), setHistoryFor(e))} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Earlier versions">
+                <History size={14} />
+              </button>
               {ok && (
                 <>
                   <button onClick={async (ev) => (ev.stopPropagation(), playBlob(await getClip(storeKey(voice, e))))} className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700" aria-label="Play">
@@ -310,8 +336,51 @@ function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh }) {
           </button>
         )}
         <p className="text-xs text-slate-400">Tap ●, read the line, tap ■. It saves, plays back, and moves to the next line.</p>
+        {clipMeta[storeKey(voice, line)]?.flags?.length > 0 && done.has(storeKey(voice, line)) && (
+          <div className="rounded-xl bg-amber-50 p-2 text-left text-xs text-amber-800">⚠️ {clipMeta[storeKey(voice, line)].flags.map((f) => QUALITY_TEXT[f]).join(' ')}</div>
+        )}
       </div>
+      <HistoryModal voice={voice} line={historyFor} onClose={() => setHistoryFor(null)} refresh={refresh} />
     </div>
+  );
+}
+
+/** Earlier versions of one recording (kept automatically when a line is re-recorded). */
+function HistoryModal({ voice, line, onClose, refresh }) {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    if (line) clipHistory(storeKey(voice, line)).then(setList);
+  }, [voice, line]);
+  if (!line) return null;
+  return (
+    <Modal open onClose={onClose} title={`Earlier versions · ${line.key}`}>
+      <p className="mb-3 text-sm text-slate-500">The last 3 recordings you replaced are kept here. Restoring one keeps the current recording as a version too.</p>
+      {list.length === 0 ? (
+        <p className="text-slate-500">No earlier versions of this line.</p>
+      ) : (
+        <div className="divide-y rounded-2xl border">
+          {list.map((h) => (
+            <div key={h.key} className="flex items-center gap-2 p-2">
+              <span className="flex-1 text-sm">{new Date(h.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+              <button onClick={async () => playBlob(await getClip(h.key))} className="grid h-8 w-8 place-items-center rounded-lg bg-slate-100" aria-label="Play this version">
+                <Play size={14} />
+              </button>
+              <button
+                onClick={async () => {
+                  await restoreVersion(storeKey(voice, line), h.key);
+                  await refresh();
+                  toast.success('Earlier version restored');
+                  onClose();
+                }}
+                className="btn-soft px-3 py-1.5 text-sm"
+              >
+                Use this one
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -340,7 +409,9 @@ function TakeImporter({ take, lines, saveClip, refresh }) {
   const saveAll = async () => {
     setSaving(0);
     for (let i = 0; i < Math.min(segs.length, lines.length); i++) {
-      await saveClip(lines[i], await encodeClip(cutClip(audio.pcm, audio.rate, segs[i]), audio.rate));
+      const e = lines[i];
+      const flags = checkQuality(audio.pcm, audio.rate, segs[i], e.kind === 'local' || e.kind === 'sound' ? '' : e.text);
+      await saveClip(e, await encodeClip(cutClip(audio.pcm, audio.rate, segs[i]), audio.rate), flags);
       setSaving(i + 1);
     }
     await refresh();

@@ -18,7 +18,7 @@ const DEMOS = [
 ];
 
 export function homeFor(user) {
-  if (user.role === 'admin') return '/admin';
+  if (user.role === 'admin' || user.role === 'recorder') return '/admin';
   if (user.role === 'teacher') return '/teacher';
   return '/home';
 }

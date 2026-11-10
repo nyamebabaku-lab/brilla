@@ -15,7 +15,7 @@ export default function AdminAppStart() {
   const users = useDB((s) => s.users);
   const [f, setF] = useState({ name: '', email: '', password: '', confirm: '' });
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
-  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user?.role === 'admin' || user?.role === 'recorder') return <Navigate to="/admin" replace />;
   const setup = !admins;
 
   const submit = (e) => {
@@ -28,7 +28,8 @@ export default function AdminAppStart() {
       toast.success('Admin account created');
       return;
     }
-    const u = users.find((x) => x.role === 'admin' && x.email === f.email.trim().toLowerCase());
+    // Admins and recorders (added in Backup & safety) log in here.
+    const u = users.find((x) => (x.role === 'admin' || x.role === 'recorder') && x.email === f.email.trim().toLowerCase());
     if (!u || u.password !== f.password) return toast.error('Email or password is wrong');
     login(u.id);
   };
@@ -61,6 +62,7 @@ export default function AdminAppStart() {
           </Field>
         )}
         <button className="btn-primary w-full py-3 text-lg">{setup ? 'Create admin login' : 'Log in'}</button>
+        {!setup && <p className="text-center text-xs text-slate-400">Recorders: use the email and password the admin gave you.</p>}
       </form>
     </div>
   );

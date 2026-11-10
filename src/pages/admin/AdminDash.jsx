@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, CreditCard, Eye, EyeOff, Languages, LayoutDashboard, Mic, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
+import { BookOpen, CreditCard, ShieldCheck, Eye, EyeOff, Languages, LayoutDashboard, Mic, Palette, Plus, RotateCcw, Tag, Trash2, Users } from 'lucide-react';
 import LanguagesAdmin from './LanguagesAdmin';
 import VoiceStudio from './VoiceStudio';
+import SafetyAdmin from './SafetyAdmin';
+import { useUser } from '../../lib/hooks';
+import { backupDue } from '../../lib/safety';
 import { IS_ADMIN_APP, IS_APP } from '../../lib/platform';
 import { saveFile } from '../../lib/files';
 import DashShell from '../../components/DashShell';
 import { Bars } from '../../components/Charts';
-import { Field, Modal, Stat, Toggle, toast } from '../../components/ui';
+import { Field, Modal, Stat, Toggle, confirmDialog, toast } from '../../components/ui';
+import { moveToTrash, restoreFromTrash } from '../../lib/safety';
 import { useDB } from '../../data/store';
 import { useShallow } from 'zustand/react/shallow';
 import { PERIODS } from '../../data/seed';
@@ -19,21 +23,43 @@ import { BACKGROUNDS, BG_NAMES, themeFromPreset } from '../../lib/theme';
 import { addDays, cls, fmtDate, money, nowISO, uid } from '../../lib/format';
 
 export default function AdminDash() {
+  const user = useUser();
+  const recorder = user?.role === 'recorder';
+  useDB((s) => s.admin); // re-render when backup status changes
   // The admin phone app is mostly used for recording voices, so it opens on the Voice studio.
-  const [tab, setTab] = useState(IS_ADMIN_APP ? 'voice' : 'overview');
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} /> },
-    { id: 'voice', label: 'Voice studio', icon: <Mic size={16} /> },
-    { id: 'plans', label: 'Plans & prices', icon: <Tag size={16} /> },
-    { id: 'lessons', label: 'Lessons', icon: <BookOpen size={16} /> },
-    { id: 'languages', label: 'Twi & Ga', icon: <Languages size={16} /> },
-    { id: 'subscribers', label: 'Subscribers', icon: <Users size={16} /> },
-    { id: 'payments', label: 'Payments', icon: <CreditCard size={16} /> },
-    { id: 'themes', label: 'Themes', icon: <Palette size={16} /> },
-  ];
+  const [tab, setTab] = useState(IS_ADMIN_APP || recorder ? 'voice' : 'overview');
+  const tabs = recorder
+    ? [{ id: 'voice', label: 'Voice studio', icon: <Mic size={16} /> }]
+    : [
+        { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} /> },
+        { id: 'voice', label: 'Voice studio', icon: <Mic size={16} /> },
+        { id: 'safety', label: 'Backup & safety', icon: <ShieldCheck size={16} /> },
+        { id: 'plans', label: 'Plans & prices', icon: <Tag size={16} /> },
+        { id: 'lessons', label: 'Lessons', icon: <BookOpen size={16} /> },
+        { id: 'languages', label: 'Twi & Ga', icon: <Languages size={16} /> },
+        { id: 'subscribers', label: 'Subscribers', icon: <Users size={16} /> },
+        { id: 'payments', label: 'Payments', icon: <CreditCard size={16} /> },
+        { id: 'themes', label: 'Themes', icon: <Palette size={16} /> },
+      ];
+  if (recorder)
+    return (
+      <DashShell title={`Hi ${user.name.split(' ')[0]} 🎙️`} subtitle="Voice studio">
+        <VoiceStudio allowedVoices={user.voices || []} />
+      </DashShell>
+    );
   return (
     <DashShell title="Admin 🛠️" subtitle="Run Brilla: prices, lessons, subscribers and revenue" tabs={tabs} tab={tab} setTab={setTab}>
+      {backupDue() && tab !== 'safety' && (
+        <button onClick={() => setTab('safety')} className="mb-4 flex w-full items-center gap-3 rounded-2xl border-2 border-amber-200 bg-amber-50 p-3 text-left text-amber-900">
+          <span className="text-2xl">💾</span>
+          <span className="flex-1 text-sm">
+            <b>Time to back up.</b> You have new recordings or changes since your last backup. If this {IS_ADMIN_APP ? 'phone is lost or the app is uninstalled' : 'browser data is cleared'}, they can’t be recovered without one.
+          </span>
+          <span className="btn-accent shrink-0 text-sm">Back up</span>
+        </button>
+      )}
       {tab === 'overview' && <Overview />}
+      {tab === 'safety' && <SafetyAdmin />}
       {tab === 'plans' && <Plans />}
       {tab === 'lessons' && <Lessons />}
       {tab === 'languages' && <LanguagesAdmin />}
@@ -264,7 +290,17 @@ function Lessons() {
                 {ov.hidden ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
               {l.custom && (
-                <button onClick={() => updateSettings({ customLessons: settings.customLessons.filter((c) => c.id !== l.id) })} className="btn-ghost px-2 text-rose-600" aria-label="Delete">
+                <button
+                  onClick={async () => {
+                    const lesson = settings.customLessons.find((c) => c.id === l.id);
+                    if (!(await confirmDialog({ title: 'Delete this lesson?', body: `“${l.title}” goes to the recycle bin for 30 days.` }))) return;
+                    updateSettings({ customLessons: settings.customLessons.filter((c) => c.id !== l.id) });
+                    const id = await moveToTrash('lesson', `Lesson “${l.title}”`, { lesson });
+                    toast.undo('Lesson deleted', () => restoreFromTrash(id));
+                  }}
+                  className="btn-ghost px-2 text-rose-600"
+                  aria-label="Delete"
+                >
                   <Trash2 size={16} />
                 </button>
               )}
@@ -343,7 +379,7 @@ function Lessons() {
 }
 
 function Subscribers() {
-  const users = useDB(useShallow((s) => s.users.filter((u) => u.role !== 'admin')));
+  const users = useDB(useShallow((s) => s.users.filter((u) => u.role !== 'admin' && u.role !== 'recorder')));
   const subs = useDB((s) => s.subscriptions);
   const children = useDB((s) => s.children);
   const settings = useDB((s) => s.settings);
@@ -515,7 +551,16 @@ function Themes() {
                   {settings.defaultTheme.preset === p.id ? 'Default ✓' : 'Make default'}
                 </button>
                 {settings.presets.length > 1 && (
-                  <button onClick={() => updateSettings({ presets: settings.presets.filter((x) => x.id !== p.id) })} className="btn-ghost px-1.5 py-1 text-rose-600" aria-label="Delete theme">
+                  <button
+                    onClick={async () => {
+                      if (!(await confirmDialog({ title: 'Delete this theme?', body: `“${p.name}” goes to the recycle bin for 30 days.` }))) return;
+                      updateSettings({ presets: settings.presets.filter((x) => x.id !== p.id) });
+                      const id = await moveToTrash('theme', `Theme “${p.name}”`, { preset: p });
+                      toast.undo('Theme deleted', () => restoreFromTrash(id));
+                    }}
+                    className="btn-ghost px-1.5 py-1 text-rose-600"
+                    aria-label="Delete theme"
+                  >
                     <Trash2 size={14} />
                   </button>
                 )}

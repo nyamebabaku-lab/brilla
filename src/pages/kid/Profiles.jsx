@@ -25,7 +25,7 @@ export default function Profiles() {
 
   if (session.studentId) return <Navigate to={`/kid/${session.studentId}`} replace />;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user.role === 'admin' || user.role === 'recorder') return <Navigate to="/admin" replace />;
   if (user.role === 'teacher') return <Navigate to="/teacher" replace />;
 
   const open = (k) => {

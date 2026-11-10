@@ -37,6 +37,10 @@ export const useDB = create(
       ...seed(),
       session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 },
       prefs: { sound: true, voice: true, music: true, musicVolume: 0.5 },
+      // Admin safety: recycle bin, recording quality notes, PIN and backup reminders.
+      trash: [],
+      clipMeta: {},
+      admin: { pin: null, lastBackupAt: null, changesSinceBackup: 0 },
 
       // ---- generic collection helpers ----
       add: (col, item) => {
@@ -80,6 +84,11 @@ export const useDB = create(
 
       // ---- admin ----
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
+      addTrash: (item) => set((s) => ({ trash: [item, ...s.trash] })),
+      removeTrash: (id) => set((s) => ({ trash: s.trash.filter((t) => t.id !== id) })),
+      setClipMeta: (key, meta) => set((s) => ({ clipMeta: meta ? { ...s.clipMeta, [key]: meta } : Object.fromEntries(Object.entries(s.clipMeta).filter(([k]) => k !== key)) })),
+      setAdmin: (patch) => set((s) => ({ admin: { ...s.admin, ...patch } })),
+      noteChange: () => set((s) => ({ admin: { ...s.admin, changesSinceBackup: (s.admin.changesSinceBackup || 0) + 1 } })),
       setLessonOverride: (lessonId, patch) =>
         set((s) => ({ settings: { ...s.settings, lessonOverrides: { ...s.settings.lessonOverrides, [lessonId]: { ...s.settings.lessonOverrides[lessonId], ...patch } } } })),
       resetDemo: () => set({ ...seed(), session: { userId: null, childId: null, studentId: null, parentUnlockedAt: 0 } }),

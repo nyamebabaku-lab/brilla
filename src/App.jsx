@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { Toaster } from './components/ui';
+import { ConfirmHost, Toaster } from './components/ui';
 import MusicController from './components/MusicController';
 import SubscriptionWatcher from './components/SubscriptionWatcher';
 import { Brill } from './components/brand';
@@ -10,6 +10,7 @@ import Landing from './pages/public/Landing';
 import AppWelcome from './pages/public/AppWelcome';
 import { IS_ADMIN_APP, IS_APP } from './lib/platform';
 import AdminAppStart from './pages/public/AdminAppStart';
+import PinLock from './components/PinLock';
 import { Login, Signup, ClassLogin } from './pages/public/Auth';
 import Pricing from './pages/public/Pricing';
 import Checkout from './pages/public/Checkout';
@@ -65,6 +66,8 @@ export default function App() {
   return (
     <HashRouter>
       <Toaster />
+      <ConfirmHost />
+      {IS_ADMIN_APP && <PinLock />}
       <MusicController />
       <SubscriptionWatcher />
       <div className="stars-layer" />
@@ -86,7 +89,7 @@ export default function App() {
             <Route path="/parent/*" element={<RequireRole roles={['parent']}><ParentDash /></RequireRole>} />
             <Route path="/teacher/*" element={<RequireRole roles={['teacher']}><TeacherDash /></RequireRole>} />
             {/* Admin lives on the website only. */}
-            <Route path="/admin/*" element={IS_APP && !IS_ADMIN_APP ? <Navigate to="/" replace /> : <RequireRole roles={['admin']}><AdminDash /></RequireRole>} />
+            <Route path="/admin/*" element={IS_APP && !IS_ADMIN_APP ? <Navigate to="/" replace /> : <RequireRole roles={['admin', 'recorder']}><AdminDash /></RequireRole>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

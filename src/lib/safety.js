@@ -5,6 +5,7 @@ import { blobToDataURL, dataURLToBlob, deleteClip, getClip, listClipKeys, putCli
 import { refreshStudioClips } from './voiceBank';
 import { expectedSeconds } from '../voice/segment';
 import { uid } from './format';
+import { queuePublish, queueUnpublish } from './publish';
 
 const KEEP_DAYS = 30;
 const HISTORY = 3;
@@ -13,14 +14,19 @@ const db = () => useDB.getState();
 // ---------------------------------------------------------------- recording history
 const histPrefix = (storeKey) => `hist:${storeKey}:`;
 
-/** Saves a recording; the one it replaces is kept in history (last 3 versions). */
-export async function saveClipWithHistory(storeKey, blob) {
+/**
+ * Saves a recording; the one it replaces is kept in history (last 3 versions).
+ * In the Admin app it is then published to families automatically (held back if `flags` has quality warnings).
+ */
+export async function saveClipWithHistory(storeKey, blob, { flags = [], force = false } = {}) {
   const old = await getClip(storeKey).catch(() => null);
   if (old) await putClip(`${histPrefix(storeKey)}${Date.now()}`, old);
   await putClip(storeKey, blob);
   const keys = (await listClipKeys(histPrefix(storeKey))).sort().reverse();
   for (const k of keys.slice(HISTORY)) await deleteClip(k);
+  db().setClipMeta(storeKey, { ...(db().clipMeta[storeKey] || {}), at: Date.now(), flags });
   db().noteChange();
+  queuePublish(storeKey, { flags, force });
 }
 
 /** Earlier versions of a recording, newest first: [{ key, at }]. */
@@ -37,7 +43,6 @@ export async function restoreVersion(storeKey, histKey) {
   if (!blob) return;
   await deleteClip(histKey);
   await saveClipWithHistory(storeKey, blob);
-  db().setClipMeta(storeKey, { ...(db().clipMeta[storeKey] || {}), flags: [], restoredAt: Date.now() });
   await refreshStudioClips();
 }
 
@@ -57,6 +62,7 @@ export async function moveToTrash(kind, label, data) {
       await deleteClip(data.storeKey);
     }
     db().setClipMeta(data.storeKey, null);
+    queueUnpublish(data.storeKey);
   }
   db().addTrash({ id, kind, label, at: Date.now(), data, blobKey });
   db().noteChange();
@@ -182,7 +188,8 @@ export const QUALITY_TEXT = {
 /** One file with every recording, word, lesson, price and team login on this device. */
 export async function makeBackup() {
   const s = db();
-  const keys = (await listClipKeys('')).filter((k) => !String(k).startsWith('trash:') && !String(k).startsWith('hist:'));
+  // Downloaded copies of published clips ('remote:') can be fetched again, so they're left out.
+  const keys = (await listClipKeys('')).filter((k) => !/^(trash|hist|remote):/.test(String(k)));
   const clips = {};
   for (const k of keys) {
     const blob = await getClip(k);
@@ -227,6 +234,7 @@ export async function storageUse() {
     usedMB: (est.usage || 0) / 1048576,
     quotaMB: (est.quota || 0) / 1048576,
     recordings: keys.filter((k) => String(k).startsWith('voice:') || /^(twi|ga):/.test(k)).length,
+    downloaded: keys.filter((k) => String(k).startsWith('remote:')).length,
     history: keys.filter((k) => String(k).startsWith('hist:')).length,
     bin: keys.filter((k) => String(k).startsWith('trash:')).length,
   };

@@ -9,7 +9,6 @@ import { usePrefsSync } from './lib/hooks';
 import Landing from './pages/public/Landing';
 import AppWelcome from './pages/public/AppWelcome';
 import { IS_ADMIN_APP, IS_APP } from './lib/platform';
-import AdminAppStart from './pages/public/AdminAppStart';
 import PinLock from './components/PinLock';
 import { Login, Signup, ClassLogin } from './pages/public/Auth';
 import Pricing from './pages/public/Pricing';
@@ -24,6 +23,9 @@ import ThemePicker from './pages/kid/ThemePicker';
 const ParentDash = lazy(() => import('./pages/parent/ParentDash'));
 const TeacherDash = lazy(() => import('./pages/teacher/TeacherDash'));
 const AdminDash = lazy(() => import('./pages/admin/AdminDash'));
+// Admin-app only (pulls in the server library, so it's kept out of the family app's main code).
+const AdminAppStart = lazy(() => import('./pages/public/AdminAppStart'));
+const StaffSync = lazy(() => import('./pages/public/AdminAppStart').then((m) => ({ default: m.StaffSync })));
 
 function Loading() {
   return (
@@ -68,6 +70,11 @@ export default function App() {
       <Toaster />
       <ConfirmHost />
       {IS_ADMIN_APP && <PinLock />}
+      {IS_ADMIN_APP && (
+        <Suspense fallback={null}>
+          <StaffSync />
+        </Suspense>
+      )}
       <MusicController />
       <SubscriptionWatcher />
       <div className="stars-layer" />

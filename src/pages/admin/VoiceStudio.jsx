@@ -11,6 +11,7 @@ import { audioCtx } from '../../lib/audio';
 import { useDB } from '../../data/store';
 import { saveFile } from '../../lib/files';
 import { Modal, confirmDialog, toast } from '../../components/ui';
+import { publishingOn, queuePublish } from '../../lib/publish';
 import { QUALITY_TEXT, checkQuality, clipHistory, markLocalAudio, moveToTrash, restoreFromTrash, restoreVersion, saveClipWithHistory, storageUse } from '../../lib/safety';
 import { cls } from '../../lib/format';
 
@@ -75,7 +76,7 @@ function playPcm(pcm, rate) {
 export default function VoiceStudio({ allowedVoices }) {
   const voices = VOICES.filter((x) => !allowedVoices || allowedVoices.includes(x.id));
   const clipMeta = useDB((s) => s.clipMeta);
-  const setClipMeta = useDB((s) => s.setClipMeta);
+  const queueLen = useDB((s) => (s.publishQueue || []).length);
   const [voice, setVoice] = useState(voices[0]?.id || 'akos');
   const v = voices.find((x) => x.id === voice) || voices[0];
   const [section, setSection] = useState('A');
@@ -107,8 +108,7 @@ export default function VoiceStudio({ allowedVoices }) {
   // Saving keeps the previous version (last 3) so a re-recording can be undone.
   const saveClip = async (e, blob, flags = []) => {
     const key = storeKey(voice, e);
-    await saveClipWithHistory(key, blob);
-    setClipMeta(key, { at: Date.now(), flags });
+    await saveClipWithHistory(key, blob, { flags });
     // Twi/Ga clips also switch on the word's audio in the Twi & Ga subject.
     if (e.kind === 'local') markLocalAudio(e.lang, e.wordId, true);
   };
@@ -182,6 +182,12 @@ export default function VoiceStudio({ allowedVoices }) {
             </div>
             <div className="text-xs text-slate-500">
               {needsCheck > 0 && <span className="mr-3 font-semibold text-amber-600">⚠️ {needsCheck} recording{needsCheck > 1 ? 's' : ''} to check</span>}
+              {publishingOn() && (
+                <span className="mr-3 font-semibold text-emerald-700">
+                  🌍 {voiceLines.filter((e) => clipMeta[storeKey(voice, e)]?.pub === 'live').length} live for families
+                  {queueLen > 0 && <span className="text-sky-700"> · ⏳ {queueLen} waiting to upload{typeof navigator !== 'undefined' && !navigator.onLine ? ' (offline)' : ''}</span>}
+                </span>
+              )}
               {storage && `Storage: ${storage.usedMB.toFixed(1)} MB used${storage.quotaMB ? ` of ${Math.round(storage.quotaMB).toLocaleString()} MB` : ''} · ${storage.recordings} recordings, ${storage.history} older versions, ${storage.bin} in recycle bin`}
             </div>
             <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-slate-100">
@@ -296,6 +302,7 @@ function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh, clipM
                 <span className="block truncate font-medium">{e.kind === 'sound' ? e.sound : e.text}</span>
                 {(e.example || e.meaning) && <span className="block truncate text-xs text-slate-400">{e.example ? `in: ${e.example}` : `means ${e.meaning}`}</span>}
               </span>
+              {ok && publishingOn() && <PublishChip status={clipMeta[storeKey(voice, e)]?.pub} />}
               {ok && clipMeta[storeKey(voice, e)]?.flags?.length > 0 && (
                 <span title={clipMeta[storeKey(voice, e)].flags.map((f) => QUALITY_TEXT[f]).join(' ')} className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-600">
                   <AlertTriangle size={14} />
@@ -337,7 +344,20 @@ function LineRecorder({ voice, lines, done, saveClip, removeClip, refresh, clipM
         )}
         <p className="text-xs text-slate-400">Tap ●, read the line, tap ■. It saves, plays back, and moves to the next line.</p>
         {clipMeta[storeKey(voice, line)]?.flags?.length > 0 && done.has(storeKey(voice, line)) && (
-          <div className="rounded-xl bg-amber-50 p-2 text-left text-xs text-amber-800">⚠️ {clipMeta[storeKey(voice, line)].flags.map((f) => QUALITY_TEXT[f]).join(' ')}</div>
+          <div className="space-y-2 rounded-xl bg-amber-50 p-2 text-left text-xs text-amber-800">
+            <div>⚠️ {clipMeta[storeKey(voice, line)].flags.map((f) => QUALITY_TEXT[f]).join(' ')}</div>
+            {publishingOn() && clipMeta[storeKey(voice, line)]?.pub === 'held' && (
+              <div className="flex items-center gap-2">
+                <span className="flex-1">Not sent to families yet. Record it again, or:</span>
+                <button onClick={() => queuePublish(storeKey(voice, line), { force: true })} className="btn-white shrink-0 px-2.5 py-1 text-xs">
+                  Publish anyway
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {publishingOn() && done.has(storeKey(voice, line)) && clipMeta[storeKey(voice, line)]?.pub === 'error' && (
+          <div className="rounded-xl bg-rose-50 p-2 text-left text-xs text-rose-700">Upload failed: it will try again automatically when the phone is online. {clipMeta[storeKey(voice, line)]?.error}</div>
         )}
       </div>
       <HistoryModal voice={voice} line={historyFor} onClose={() => setHistoryFor(null)} refresh={refresh} />
@@ -473,5 +493,22 @@ function TakeImporter({ take, lines, saveClip, refresh }) {
         </>
       )}
     </div>
+  );
+}
+
+/** Whether a recording has reached the family apps. */
+function PublishChip({ status }) {
+  const map = {
+    live: ['🌍', 'Live for families', 'bg-emerald-50 text-emerald-700'],
+    queued: ['⏳', 'Waiting to upload', 'bg-sky-50 text-sky-700'],
+    removing: ['⏳', 'Removing from families', 'bg-sky-50 text-sky-700'],
+    held: ['✋', 'Held: has a quality warning', 'bg-amber-50 text-amber-700'],
+    error: ['⚠️', 'Upload failed, will retry', 'bg-rose-50 text-rose-700'],
+  };
+  const [icon, title, style] = map[status] || ['💾', 'Saved on this phone only', 'bg-slate-100 text-slate-500'];
+  return (
+    <span title={title} aria-label={title} className={cls('grid h-8 w-8 shrink-0 place-items-center rounded-lg text-sm', style)}>
+      {icon}
+    </span>
   );
 }

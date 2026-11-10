@@ -44,7 +44,7 @@ export async function playLocal(lang, word) {
     }
   }
   // Native-speaker recording that ships with the app.
-  const url = localClipUrl(lang, word.id);
+  const url = await localClipUrl(lang, word.id);
   if (url) {
     try {
       current = new Audio(url);

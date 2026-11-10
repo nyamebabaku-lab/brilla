@@ -40,6 +40,7 @@ export const useDB = create(
       // Admin safety: recycle bin, recording quality notes, PIN and backup reminders.
       trash: [],
       clipMeta: {},
+      publishQueue: [], // Admin app: recordings waiting to upload to the server
       admin: { pin: null, lastBackupAt: null, changesSinceBackup: 0 },
 
       // ---- generic collection helpers ----

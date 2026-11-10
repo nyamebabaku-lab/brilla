@@ -5,6 +5,7 @@ import { OfflineBadge } from './common';
 import { Tabs } from './ui';
 import { useDB } from '../data/store';
 import { useTheme } from '../lib/hooks';
+import { IS_ADMIN_APP } from '../lib/platform';
 
 /** Grown-up dashboard frame: header, tabs and content. */
 export default function DashShell({ title, subtitle, tabs, tab, setTab, actions, children }) {
@@ -20,7 +21,15 @@ export default function DashShell({ title, subtitle, tabs, tab, setTab, actions,
           </Link>
           <div className="ml-auto flex items-center gap-2">
             {actions}
-            <button onClick={() => (logout(), nav('/'))} className="btn-ghost px-3" aria-label="Log out">
+            <button
+              onClick={async () => {
+                if (IS_ADMIN_APP) (await import('../lib/publish')).signOutServer();
+                logout();
+                nav('/');
+              }}
+              className="btn-ghost px-3"
+              aria-label="Log out"
+            >
               <LogOut size={18} /> <span className="hidden sm:inline">Log out</span>
             </button>
           </div>

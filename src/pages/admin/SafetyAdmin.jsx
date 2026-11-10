@@ -8,6 +8,7 @@ import { saveFile } from '../../lib/files';
 import { daysLeftInBin, deleteForever, makeBackup, purgeOldTrash, restoreBackup, restoreFromTrash, storageUse } from '../../lib/safety';
 import { IS_ADMIN_APP } from '../../lib/platform';
 import { cls, fmtDateTime } from '../../lib/format';
+import { listStaff, removeStaff, setStaff } from '../../lib/publish';
 
 const VOICE_CHOICES = [
   ['akos', 'Auntie Akos'],
@@ -25,7 +26,7 @@ export default function SafetyAdmin() {
       <RecycleBin />
       <div className="space-y-4">
         <PinCard />
-        <TeamCard />
+        {IS_ADMIN_APP ? <ServerTeamCard /> : <TeamCard />}
       </div>
     </div>
   );
@@ -266,6 +267,106 @@ function TeamCard() {
           </form>
         )}
       </Modal>
+    </div>
+  );
+}
+
+/** Admin app: accounts on the server. Recorders sign up in the Admin app; approve them and pick their voices here. */
+function ServerTeamCard() {
+  const me = useDB((s) => s.session.userId);
+  const [staff, setStaffList] = useState(null);
+  const [edit, setEdit] = useState({});
+  const load = () =>
+    listStaff()
+      .then(setStaffList)
+      .catch(() => setStaffList('offline'));
+  useEffect(() => {
+    load();
+  }, []);
+  const act = async (fn, msg) => {
+    try {
+      await fn();
+      toast.success(msg);
+      load();
+    } catch (e) {
+      toast.error('Could not save', String(e?.message || e));
+    }
+  };
+  const voicesOf = (u) => edit[u.user_id] ?? u.voices ?? [];
+  const toggle = (u, v) => setEdit((x) => ({ ...x, [u.user_id]: voicesOf(u).includes(v) ? voicesOf(u).filter((y) => y !== v) : [...voicesOf(u), v] }));
+  const pending = Array.isArray(staff) ? staff.filter((u) => u.status === 'pending').length : 0;
+  return (
+    <div className="panel space-y-3 p-5">
+      <h3 className="flex items-center gap-2 font-semibold">
+        <UserPlus size={18} /> Recorders {pending > 0 && <span className="chip bg-accent-500 text-white">{pending} waiting</span>}
+      </h3>
+      <p className="text-sm text-slate-500">
+        People who record install Brilla Admin and tap <b>Create account</b>. Approve them here and tick the voices they record. They only see the Voice studio, and their recordings go live for families automatically.
+      </p>
+      {staff === null && <p className="text-sm text-slate-500">Loading…</p>}
+      {staff === 'offline' && (
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          Connect to the internet to manage recorders.{' '}
+          <button onClick={load} className="font-semibold underline">
+            Try again
+          </button>
+        </p>
+      )}
+      {Array.isArray(staff) && (
+        <div className="divide-y rounded-2xl border">
+          {staff.map((u) => (
+            <div key={u.user_id} className="space-y-2 p-3">
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">
+                    {u.name} {u.user_id === me && <span className="text-xs text-slate-400">(you)</span>}
+                  </div>
+                  <div className="truncate text-xs text-slate-400">{u.email}</div>
+                </div>
+                <span className={cls('chip', u.role === 'admin' ? 'bg-brand-100 text-brand-700' : u.status === 'active' ? 'bg-emerald-100 text-emerald-700' : u.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600')}>
+                  {u.role === 'admin' ? 'admin' : u.status}
+                </span>
+              </div>
+              {u.role === 'recorder' && (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {VOICE_CHOICES.map(([id, label]) => (
+                      <label key={id} className={cls('flex cursor-pointer items-center gap-1.5 rounded-xl border-2 px-2.5 py-1 text-xs', voicesOf(u).includes(id) ? 'border-brand-500 bg-brand-50' : 'border-slate-200')}>
+                        <input type="checkbox" checked={voicesOf(u).includes(id)} onChange={() => toggle(u, id)} />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {u.status !== 'active' ? (
+                      <button onClick={() => (voicesOf(u).length ? act(() => setStaff(u.user_id, 'active', voicesOf(u)), `${u.name} approved`) : toast.error('Tick at least one voice first'))} className="btn-primary px-3 py-1.5 text-sm">
+                        Approve
+                      </button>
+                    ) : (
+                      <>
+                        <button onClick={() => act(() => setStaff(u.user_id, 'active', voicesOf(u)), 'Voices saved')} className="btn-soft px-3 py-1.5 text-sm">
+                          Save voices
+                        </button>
+                        <button onClick={() => act(() => setStaff(u.user_id, 'suspended', voicesOf(u)), `${u.name} suspended`)} className="btn-ghost px-3 py-1.5 text-sm">
+                          Suspend
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (await confirmDialog({ title: `Remove ${u.name}?`, body: 'They lose access to Brilla Admin. Recordings they published stay live.' })) act(() => removeStaff(u.user_id), 'Removed');
+                      }}
+                      className="btn-ghost px-3 py-1.5 text-sm text-rose-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

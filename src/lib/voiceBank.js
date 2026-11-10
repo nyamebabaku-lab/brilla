@@ -1,18 +1,26 @@
 // Plays the recorded teacher voices ("voice bank").
 // A sentence is spoken from recordings only if every part of it has a clip for the current teacher;
 // otherwise the device voice says the whole sentence (the child's own name may be filled in by the device voice).
-// Clips come from the app (public/voice/<teacher>/<key>.mp3, listed in manifest.json) or from the
-// Recording Studio (IndexedDB 'voice:<teacher>:<key>'), which wins.
+// Clips come from (first match wins):
+//   1. the Recording Studio on this device (IndexedDB 'voice:<teacher>:<key>'),
+//   2. the server, when a newer version was published than the one built into the app
+//      (downloaded once, then kept in IndexedDB 'remote:<path>' for offline use),
+//   3. the app itself (public/voice/<teacher>/<key>.mp3, listed with versions in manifest.json).
 import bank from '../voice/bank.json';
 import { buildIndex, matchText } from '../voice/matcher';
 import { toWords } from '../voice/normalize';
 import { audioCtx } from './audio';
-import { getClip, listClipKeys } from '../data/audioStore';
+import { getClip, listClipKeys, putClip } from '../data/audioStore';
+import { fetchPublishedClips, publicClipUrl } from './server';
 
 const index = buildIndex(bank.phrases.map(([key, words]) => ({ key, words })));
 const available = { akos: new Set(), kwame: new Set() };
 const studio = { akos: new Set(), kwame: new Set() };
 export const localAvailable = { twi: new Set(), ga: new Set() };
+// Versions of the clips built into the app, and clips published on the server: key → { path, version }.
+const bundledVersion = { akos: new Map(), kwame: new Map(), twi: new Map(), ga: new Map() };
+const remote = { akos: new Map(), kwame: new Map(), twi: new Map(), ga: new Map() };
+const REMOTE_CACHE = 'brilla-voice-remote';
 const buffers = new Map(); // `${teacher}:${key}` → AudioBuffer
 let teacher = 'akos';
 let childWords = new Set();
@@ -34,15 +42,70 @@ export async function loadVoiceBank() {
     const res = await fetch('./voice/manifest.json', { cache: 'no-cache' });
     if (res.ok) {
       const m = await res.json();
-      available.akos = new Set(m.akos || []);
-      available.kwame = new Set(m.kwame || []);
-      localAvailable.twi = new Set(m.local?.twi || []);
-      localAvailable.ga = new Set(m.local?.ga || []);
+      // Older manifests list keys; newer ones map key → version.
+      const read = (x, who) => {
+        const entries = Array.isArray(x) ? x.map((k) => [k, 0]) : Object.entries(x || {});
+        bundledVersion[who] = new Map(entries);
+        return new Set(entries.map(([k]) => k));
+      };
+      available.akos = read(m.akos, 'akos');
+      available.kwame = read(m.kwame, 'kwame');
+      localAvailable.twi = read(m.local?.twi, 'twi');
+      localAvailable.ga = read(m.local?.ga, 'ga');
     }
   } catch {
     /* no bundled voices yet */
   }
+  applyRemote(readCachedRemote());
   await refreshStudioClips();
+  refreshPublished();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', refreshPublished);
+    setInterval(refreshPublished, 30 * 60 * 1000);
+  }
+}
+
+function readCachedRemote() {
+  try {
+    return JSON.parse(localStorage.getItem(REMOTE_CACHE) || '[]');
+  } catch {
+    return [];
+  }
+}
+function applyRemote(rows) {
+  for (const t of Object.keys(remote)) remote[t] = new Map();
+  for (const r of rows) remote[r.teacher]?.set(r.key, { path: r.path, version: r.version });
+}
+/** Gets the list of recordings published from the Admin app (kept for offline use). */
+export async function refreshPublished() {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+  try {
+    const rows = await fetchPublishedClips();
+    applyRemote(rows);
+    try {
+      localStorage.setItem(REMOTE_CACHE, JSON.stringify(rows));
+    } catch {
+      /* storage full */
+    }
+    buffers.clear();
+  } catch {
+    /* offline or server unreachable: keep the saved list */
+  }
+}
+/** The server copy to use for a clip, if it's newer than the one built into the app. */
+const remoteFor = (who, key) => {
+  const r = remote[who]?.get(key);
+  return r && r.version > (bundledVersion[who]?.get(key) ?? -1) ? r : null;
+};
+/** Downloads a published clip once, then serves it from this device. */
+async function remoteBlob(path) {
+  const cached = await getClip(`remote:${path}`).catch(() => null);
+  if (cached) return cached;
+  const res = await fetch(publicClipUrl(path));
+  if (!res.ok) throw new Error('clip unavailable');
+  const blob = await res.blob();
+  putClip(`remote:${path}`, blob).catch(() => {});
+  return blob;
 }
 export async function refreshStudioClips() {
   try {
@@ -53,8 +116,9 @@ export async function refreshStudioClips() {
   buffers.clear();
 }
 
-const has = (key) => available[teacher].has(key) || studio[teacher].has(key);
-export const voiceStats = () => ({ akos: new Set([...available.akos, ...studio.akos]).size, kwame: new Set([...available.kwame, ...studio.kwame]).size, total: bank.phrases.length + Object.keys(bank.sounds).length });
+const has = (key) => available[teacher].has(key) || studio[teacher].has(key) || remote[teacher].has(key);
+const allFor = (who) => new Set([...available[who], ...studio[who], ...remote[who].keys()]);
+export const voiceStats = () => ({ akos: allFor('akos').size, kwame: allFor('kwame').size, total: bank.phrases.length + Object.keys(bank.sounds).length });
 
 async function loadBuffer(key, who = teacher) {
   const id = `${who}:${key}`;
@@ -62,6 +126,8 @@ async function loadBuffer(key, who = teacher) {
   const ctx = audioCtx();
   let data = null;
   if (studio[who].has(key)) data = await (await getClip(`voice:${who}:${key}`))?.arrayBuffer();
+  const r = !data && remoteFor(who, key);
+  if (r) data = await (await remoteBlob(r.path)).arrayBuffer();
   if (!data) {
     const res = await fetch(`./voice/${who}/${key}.mp3`);
     if (!res.ok) throw new Error('missing clip');
@@ -75,7 +141,7 @@ async function loadBuffer(key, who = teacher) {
 
 /** The recorded plan for `text`, or null if it can't be spoken entirely from recordings. */
 export function planFor(text) {
-  if (!available[teacher].size && !studio[teacher].size) return null;
+  if (!available[teacher].size && !studio[teacher].size && !remote[teacher].size) return null;
   const m = matchText(text, index, { has, allow: (w) => childWords.has(w) });
   return m.complete ? m.parts : null;
 }
@@ -143,13 +209,28 @@ export async function playSound(grapheme) {
   return playPlan([{ key }]);
 }
 
-/** Bundled native-speaker recording of a Twi/Ga word, if there is one. */
-export const localClipUrl = (lang, wordId) => (localAvailable[lang]?.has(wordId) ? `./voice/local/${lang}/${wordId}.mp3` : null);
+/** Native-speaker recording of a Twi/Ga word (published or built in) as a playable URL, or null. */
+export async function localClipUrl(lang, wordId) {
+  const r = remoteFor(lang, wordId);
+  if (r) {
+    try {
+      return URL.createObjectURL(await remoteBlob(r.path));
+    } catch {
+      /* fall back to the built-in copy */
+    }
+  }
+  return localAvailable[lang]?.has(wordId) ? `./voice/local/${lang}/${wordId}.mp3` : null;
+}
 
 /** Downloads every bundled clip for a teacher so it works offline (website only). */
 export async function downloadVoices(gender, onProgress) {
   const who = teacherFor(gender);
   const keys = [...available[who]];
+  // Published recordings newer than the app's own copies.
+  for (const [key] of remote[who]) {
+    const r = remoteFor(who, key);
+    if (r) await remoteBlob(r.path).catch(() => null);
+  }
   let done = 0;
   for (let k = 0; k < keys.length; k += 8) {
     await Promise.all(keys.slice(k, k + 8).map((key) => fetch(`./voice/${who}/${key}.mp3`).catch(() => null)));

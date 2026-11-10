@@ -46,3 +46,17 @@ The app joins recorded clips to say any lesson; anything not recorded yet uses t
    the manifest is updated, and `release/voice-sync-report.md` lists any take that needs checking
    (takes whose line count doesn't match are not saved).
 4. Build and deploy as usual; the Android build includes the clips.
+
+### Publishing from Brilla Admin (automatic)
+
+Recordings made in the **Brilla Admin** app are published to families automatically through the server
+(Supabase project `poultrypro`, Brilla-only tables `brilla_staff` / `brilla_voice_clips` and the public
+`brilla-voice` storage bucket; setup in `supabase/migrations/20261110000000_brilla_voice.sql`).
+
+- Recorders create an account in Brilla Admin; the admin approves them and picks their voices
+  (Backup & safety → Recorders). The owner email in `brilla_owner_email()` becomes the admin.
+- Clean recordings go live at once; recordings with a quality warning wait for a re-record or *Publish anyway*.
+  Offline recordings queue and upload when the phone is back online. Deleting unpublishes (files are kept so
+  restores work).
+- Family apps fetch the published list (`src/lib/server.js`) and download each clip once for offline use.
+  Every build runs `scripts/voice-pull.mjs`, which packs published clips (as MP3) into the app.
